@@ -21,6 +21,7 @@ for AI agents. Full conventions are in AGENTS.md.
 - [AGENTS.md](./AGENTS.md): canonical conventions, commands, structure, checklist
 - Use `bun`/`bunx`, never `npm`/`npx`
 - Run `bun run verify` (lint + typecheck + format + test + build) before "done"
+- Run `bun run check:api` for the TypeScript-aware API architecture gate
 - `src/routeTree.gen.ts` is generated — never edit by hand
 
 ## Entry points
@@ -28,6 +29,22 @@ for AI agents. Full conventions are in AGENTS.md.
 - `src/main.tsx`: app entry
 - `src/routes/__root.tsx`: root layout
 - `src/index.css`: Tailwind + design tokens
+
+## API architecture
+
+- [docs/architecture/api-layer.md](./docs/architecture/api-layer.md): canonical API rules and adopted Bulletproof React reference
+- `src/config/env.ts`: only public environment reader; production forces API mocking off
+- `src/lib/api-client.ts`: single Axios transport and Zod response-validation boundary
+- `src/lib/api-error.ts`: normalized network, HTTP, validation, and unknown errors
+- `src/lib/react-query.ts`: Query client defaults and shared option types
+- `src/features/instructions/api/`: feature-owned schemas, fetchers, keys, hooks, and cache behavior
+- `src/mocks/`: MSW browser worker, Node test server, handlers, overrides, and deterministic state
+- `tools/generators/api/`: deterministic query/mutation scaffolder (`bun run generate:api`)
+- `tools/check-api/`: architecture and unfinished-generator enforcement (`bun run check:api`)
+
+Generator example:
+
+`bun run generate:api --feature instructions --kind query --name get-instruction-history --resource instruction-history --dry-run`
 
 ## Optional
 

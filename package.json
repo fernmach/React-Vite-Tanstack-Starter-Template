@@ -11,7 +11,9 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "bun run lint && bun run typecheck && bun run format:check",
+    "generate:api": "bun tools/generators/api/cli.ts",
+    "check:api": "bun tools/check-api/cli.ts",
+    "check": "bun run lint && bun run typecheck && bun run format:check && bun run check:api",
     "verify": "bun run check && bun run test && bun run build",
     "preview": "vite preview",
     "test": "vitest run",
@@ -29,21 +31,27 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
+    "@radix-ui/react-alert-dialog": "^1.1.23",
+    "@radix-ui/react-slot": "^1.3.3",
+    "@radix-ui/react-switch": "^1.3.7",
     "@tailwindcss/postcss": "^4.3.1",
     "@tailwindcss/vite": "^4.3.1",
     "@tanstack/react-query": "^5.101.1",
     "@tanstack/react-router": "^1.170.16",
     "@vitejs/plugin-react": "^6.0.3",
+    "axios": "^1.20.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.21.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "tailwind-merge": "^3.6.0",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@tanstack/react-query-devtools": "5.101.1",
     "@tanstack/router-devtools": "^1.167.0",
     "@tanstack/router-plugin": "^1.168.18",
     "@testing-library/jest-dom": "^7.0.1",
@@ -62,6 +70,7 @@
     "jsdom": "^30.0.1",
     "lefthook": "^2.1.9",
     "lint-staged": "^17.0.8",
+    "msw": "^2.15.0",
     "postcss": "^8.5.15",
     "prettier": "^3.8.4",
     "prettier-plugin-tailwindcss": "^0.8.0",
@@ -73,5 +82,10 @@
   },
   "overrides": {
     "vite": "^8.1.0"
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
   }
 }
