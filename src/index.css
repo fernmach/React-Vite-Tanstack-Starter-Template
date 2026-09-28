@@ -3,13 +3,13 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: #faf9f5;
-  --foreground: #3d3929;
-  --card: #faf9f5;
-  --card-foreground: #141413;
+  --background: #ffffff;
+  --foreground: #17263a;
+  --card: #ffffff;
+  --card-foreground: #17263a;
   --popover: #ffffff;
   --popover-foreground: #28261b;
-  --primary: #c96442;
+  --primary: #176da3;
   --primary-foreground: #ffffff;
   --secondary: #e9e6dc;
   --secondary-foreground: #535146;
@@ -21,7 +21,7 @@
   --destructive-foreground: #ffffff;
   --border: #dad9d4;
   --input: #b4b2a7;
-  --ring: #c96442;
+  --ring: #176da3;
   --chart-1: #b05730;
   --chart-2: #9c87f5;
   --chart-3: #ded8c4;
@@ -179,6 +179,24 @@
   --shadow-lg: var(--shadow-lg);
   --shadow-xl: var(--shadow-xl);
   --shadow-2xl: var(--shadow-2xl);
+}
+
+.instructions-shell {
+  --background: #ffffff;
+  --foreground: #17263a;
+  --card: #ffffff;
+  --card-foreground: #17263a;
+  --popover: #ffffff;
+  --popover-foreground: #17263a;
+  --primary: #176da3;
+  --primary-foreground: #ffffff;
+  --muted: #f2f4f7;
+  --muted-foreground: #526173;
+  --accent: #e8f1f8;
+  --accent-foreground: #124f78;
+  --border: #d7dde4;
+  --input: #aab5c1;
+  --ring: #176da3;
 }
 
 @layer base {
