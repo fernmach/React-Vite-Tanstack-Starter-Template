@@ -1,7 +1,19 @@
 # TODO
 
+## API layer program — complete
+
+- [x] Adopt and document the Bulletproof API-layer architecture.
+- [x] Add the validated shared client, errors, Query provider, and test helpers.
+- [x] Add MSW development/test contracts with isolated Instructions state.
+- [x] Add validated Instructions operations, Query hooks, and explicit mutation cache behavior.
+- [x] Move the Instructions UI completely onto the feature API hooks.
+- [x] Add the deterministic API generator and its dry-run/collision safeguards.
+- [x] Enforce API boundaries in ESLint, `check:api`, lefthook, and CI.
+- [x] Reconcile public docs and verify production-safe release readiness.
+
 ## Done
 
+- [x] Adopt feature-oriented source organization with enforced ESLint boundaries
 - [x] Migrate UI primitives from Radix to **Base UI** (`@base-ui/react`)
   - [x] Rewrite `button.tsx` using `useRender` (`render` prop replaces `asChild`)
   - [x] Remove `@radix-ui/react-slot` and unused `@radix-ui/react-select`

@@ -42,7 +42,10 @@ cd React-Vite-Tanstack-Starter-Template
 # 2. Install dependencies
 bun install
 
-# 3. Start the dev server
+# 3. Create a local environment file and review its values
+cp .env.example .env.local
+
+# 4. Start the dev server
 bun run dev
 ```
 
@@ -61,7 +64,9 @@ Then open **[http://localhost:5173](http://localhost:5173)**.
 | `bun run typecheck`    | Type-check only (`tsc --noEmit`)                    |
 | `bun run format`       | Format all files with Prettier                      |
 | `bun run format:check` | Check formatting without writing                    |
-| `bun run check`        | Lint + typecheck + format check                     |
+| `bun run generate:api` | Scaffold one feature-owned query or mutation        |
+| `bun run check:api`    | Validate API operation and consumer architecture    |
+| `bun run check`        | Lint + typecheck + format + API architecture        |
 | `bun run verify`       | Full gate: check + test + build (run before "done") |
 | `bun run test`         | Run the test suite once                             |
 | `bun run test:watch`   | Run tests in watch mode                             |
@@ -87,18 +92,36 @@ bunx shadcn@latest add dropdown-menu --base base
 
 ```
 src/
+├── app/
+│   ├── layouts/          # Global application shell and navigation
+│   └── provider.tsx      # Query client composition
 ├── components/
-│   ├── ui/              # shadcn/ui components (Base UI primitives)
-│   └── ...              # app-level components (nav, theme, etc.)
+│   └── ui/              # Reusable, domain-neutral shadcn primitives
+├── config/
+│   └── env.ts           # Validated public environment boundary
+├── features/
+│   └── instructions/
+│       ├── api/         # Schemas, requests, query keys, and hooks
+│       ├── components/  # Feature UI with colocated tests
+│       ├── model/       # Instruction domain types
+│       └── pages/       # Instructions page composition
 ├── lib/
-│   └── utils.ts         # cn() and other helpers
-├── routes/              # TanStack Router file-based routes
+│   ├── api-client.ts    # Shared Axios transport and response validation
+│   ├── api-error.ts     # Normalized API errors
+│   └── react-query.ts   # Query client defaults and shared option types
+├── mocks/               # MSW browser/Node entry points, handlers, and data
+├── routes/              # Thin TanStack Router declarations
 │   ├── __root.tsx       # Root layout route
-│   └── index.tsx        # Home route (/)
+│   ├── index.tsx        # Redirects / to /instrucoes
+│   └── instrucoes.tsx   # Instructions route declaration
 ├── test/
-│   └── setup.ts         # Vitest + Testing Library setup
+│   └── setup.ts         # Shared Vitest + Testing Library setup
 ├── main.tsx             # App entry
 └── index.css            # Tailwind + design tokens
+
+tools/
+├── check-api/            # TypeScript-aware API architecture enforcement
+└── generators/api/       # Deterministic API operation generator
 ```
 
 ## Tech Stack
@@ -118,12 +141,56 @@ src/
 
 Routing is file-based via TanStack Router — add a file in `src/routes/` and the route tree is generated automatically:
 
-| File                        | Route         |
-| --------------------------- | ------------- |
-| `src/routes/index.tsx`      | `/`           |
-| `src/routes/about.tsx`      | `/about`      |
-| `src/routes/blog/index.tsx` | `/blog`       |
-| `src/routes/blog/$slug.tsx` | `/blog/:slug` |
+| File                        | Route                            |
+| --------------------------- | -------------------------------- |
+| `src/routes/index.tsx`      | `/` → redirects to `/instrucoes` |
+| `src/routes/instrucoes.tsx` | `/instrucoes`                    |
+
+Feature code is organized by business capability. Route files contain only
+router concerns and delegate rendering to feature pages. ESLint enforces the
+dependency direction `shared → features → app/routes`.
+
+## API and environment
+
+The canonical rules are in [API Layer Architecture](./docs/architecture/api-layer.md),
+which adopts the [Bulletproof React API Layer guide](https://github.com/alan2207/bulletproof-react/blob/master/docs/api-layer.md).
+All HTTP calls go through `src/lib/api-client.ts`; feature operations own their
+Zod schemas, request functions, query keys, hooks, and cache behavior.
+
+Vite exposes only these validated public variables:
+
+| Variable                  | Default          | Behavior                                                                                                 |
+| ------------------------- | ---------------- | -------------------------------------------------------------------------------------------------------- |
+| `VITE_API_URL`            | `/api`           | Base path or absolute URL used by the shared API client.                                                 |
+| `VITE_ENABLE_API_MOCKING` | development only | Accepts only `true` or `false`. It can disable MSW locally, but cannot enable MSW in a production build. |
+
+`.env.example` contains safe local defaults. Put machine-specific values in
+`.env.local`; never place secrets in a `VITE_` variable because Vite embeds
+those values in browser assets.
+
+MSW is the development and test API. Development starts the browser worker only
+when the build is in development mode and mocking is enabled. Tests start the
+Node server from `src/test/setup.ts`, fail on unhandled requests, and reset
+handlers and mock state after each test. Production never starts MSW, even if
+`VITE_ENABLE_API_MOCKING=true` is supplied accidentally.
+
+Create an operation with all required options:
+
+```bash
+bun run generate:api --feature instructions --kind query --name get-instruction-history --resource instruction-history
+bun run generate:api --feature instructions --kind mutation --name restore-instruction --resource instructions
+```
+
+Preview the exact formatted output without writing files by appending
+`--dry-run`:
+
+```bash
+bun run generate:api --feature instructions --kind query --name get-instruction-history --resource instruction-history --dry-run
+```
+
+The feature must already exist. The generator refuses invalid names and
+collisions. Generated scaffolds are intentionally incomplete: resolve every
+`API_GENERATOR_TODO`, add MSW contract coverage, then run `bun run verify`.
 
 ## Styling
 
@@ -155,9 +222,9 @@ This template is built to be productive with AI coding tools out of the box:
 | `.mcp.json`      | MCP servers (ships with Playwright for UI verification)           |
 
 Guardrails keep AI-generated changes honest: ESLint + Prettier, a **lefthook**
-pre-commit hook that auto-fixes staged files, a `bun run verify` gate (lint +
-typecheck + format + test + build), and **Dependabot** for weekly dependency
-updates.
+pre-commit hook that auto-fixes staged files and validates API boundaries, a
+`bun run verify` gate (lint + typecheck + format + API architecture + test +
+build), and **Dependabot** for weekly dependency updates.
 
 ## License
 

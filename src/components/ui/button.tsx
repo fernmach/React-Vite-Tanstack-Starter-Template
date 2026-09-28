@@ -1,6 +1,7 @@
 import * as React from 'react'
-import { useRender } from '@base-ui/react/use-render'
+import { Slot } from '@radix-ui/react-slot'
 import { mergeProps } from '@base-ui/react/merge-props'
+import { useRender } from '@base-ui/react/use-render'
 import { cva, type VariantProps } from 'class-variance-authority'
 
 import { cn } from '@/lib/utils'
@@ -39,23 +40,35 @@ export interface ButtonProps
   extends
     React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
-  /**
-   * Override the rendered element. Base UI's replacement for shadcn's old
-   * `asChild` prop — pass an element (e.g. `render={<a href="/" />}`) or a
-   * render function to change the underlying tag while keeping the styling.
-   */
+  asChild?: boolean
   render?: useRender.RenderProp
 }
 
-function Button({ className, variant, size, render, ...props }: ButtonProps) {
-  return useRender({
+function Button({
+  className,
+  variant,
+  size,
+  asChild = false,
+  render,
+  ...props
+}: ButtonProps) {
+  const mergedClassName = cn(buttonVariants({ variant, size, className }))
+  const renderedButton = useRender({
     defaultTagName: 'button',
     render,
-    props: mergeProps<'button'>(
-      { className: cn(buttonVariants({ variant, size, className })) },
-      props,
-    ),
+    props: mergeProps<'button'>({ className: mergedClassName }, props),
   })
+
+  if (render) {
+    return renderedButton
+  }
+
+  const Comp = asChild ? Slot : 'button'
+  return asChild ? (
+    <Comp className={mergedClassName} {...props} />
+  ) : (
+    renderedButton
+  )
 }
 
 export { Button, buttonVariants }
