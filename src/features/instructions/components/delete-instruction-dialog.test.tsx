@@ -22,6 +22,57 @@ function Harness({ onAnnounce }: { onAnnounce: (message: string) => void }) {
 }
 
 describe('DeleteInstructionDialog', () => {
+  it('closes after a confirmed archive even when refresh fails and reports the accurate outcome', async () => {
+    const user = userEvent.setup()
+    const announce = vi.fn()
+    render(<Harness onAnnounce={announce} />)
+    await user.click(
+      await screen.findByRole('button', { name: 'Excluir instrução 186682' }),
+    )
+    server.use(
+      http.get(instructionsUrl, () =>
+        HttpResponse.json({ message: 'PRIVATE REFRESH' }, { status: 503 }),
+      ),
+    )
+    await user.click(screen.getByRole('button', { name: 'Arquivar instrução' }))
+    await waitFor(() =>
+      expect(announce).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'A instrução foi arquivada, mas a lista não pôde ser atualizada.',
+        ),
+        true,
+      ),
+    )
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(announce).not.toHaveBeenCalledWith(
+      expect.stringContaining('Não foi possível arquivar'),
+    )
+  })
+
+  it('keeps a missing-record failure in the dialog with list recovery', async () => {
+    const user = userEvent.setup()
+    render(<Harness onAnnounce={vi.fn()} />)
+    await user.click(
+      await screen.findByRole('button', { name: 'Excluir instrução 186682' }),
+    )
+    server.use(
+      http.patch(`${instructionsUrl}/*`, () =>
+        HttpResponse.json(
+          { message: 'PRIVATE', code: 'INSTRUCTION_NOT_FOUND' },
+          { status: 404 },
+        ),
+      ),
+    )
+    await user.click(screen.getByRole('button', { name: 'Arquivar instrução' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Esta instrução não está mais disponível.',
+    )
+    expect(screen.getByRole('alertdialog')).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'Atualizar lista' }),
+    ).toBeVisible()
+  })
+
   it('identifies the record and returns focus when cancellation closes it', async () => {
     const user = userEvent.setup()
     render(<Harness onAnnounce={vi.fn()} />)
@@ -81,11 +132,10 @@ describe('DeleteInstructionDialog', () => {
     expect(screen.getByRole('button', { name: 'Arquivando…' })).toBeDisabled()
 
     releaseRequest()
-    await waitFor(() =>
-      expect(announce).toHaveBeenCalledWith(
-        expect.stringContaining('Tente novamente'),
-      ),
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Não foi possível arquivar a instrução. Tente novamente.',
     )
+    expect(announce).not.toHaveBeenCalled()
     expect(screen.getByRole('alertdialog')).toBeVisible()
     expect(
       screen.getByRole('button', { name: 'Arquivar instrução' }),

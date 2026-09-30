@@ -29,8 +29,9 @@ Always use **`bun`** (never npm/yarn) and **`bunx`** (never npx).
 | `bun run typecheck`    | Type-check only (`tsc --noEmit`)                                          |
 | `bun run format`       | Format all files with Prettier                                            |
 | `bun run format:check` | Check formatting without writing                                          |
+| `bun run check:api`    | Check API and error-handling architecture                                 |
 | `bun run test`         | Run the Vitest suite once                                                 |
-| `bun run check`        | Lint + typecheck + format check                                           |
+| `bun run check`        | Lint + typecheck + format check + API architecture                        |
 | `bun run verify`       | **Full gate: check + test + build. Run this before declaring work done.** |
 
 ## Project Structure
@@ -95,6 +96,32 @@ Every feature directory MUST be registered in the `featureNames` list in
   fetchers.
 - Every mutation MUST declare its cache update, rollback, or invalidation
   behavior explicitly.
+
+## Error Handling (Mandatory)
+
+Follow [`docs/architecture/error-handling.md`](docs/architecture/error-handling.md)
+alongside the API-layer standard. Keep these owners separate:
+
+- The Axios response interceptor normalizes transport/HTTP errors and signals
+  401 authentication episodes. The request wrapper validates successful
+  response schemas; feature operations validate requests before transport or
+  optimistic cache changes.
+- The application layer owns notifications, routing, session, and authentication
+  effects. `api-client` MUST NOT present UI or navigate.
+- TanStack Query/cache owns remote state, retry policy, cache effects, and one
+  sanitized report per failed execution. Feature UI owns safe copy, inline or
+  local feedback, recovery actions, and status-qualified backend-code mappings.
+- Render/route boundaries and startup guards own unexpected failures outside
+  managed API operations.
+
+Cancellation MUST be silent: no feedback, authentication event, report, or
+retry. Never display raw backend messages, stacks, schemas, request data, or
+secrets. Give each failure one feedback owner; do not duplicate local and global
+feedback. Never automatically retry/replay a mutation without a documented
+idempotency contract. A confirmed write remains successful when a later refresh
+or callback fails; report and present that follow-up failure separately. Add
+focused tests for validation, cancellation, feedback ownership, reporting, and
+cache/recovery behavior relevant to each new operation.
 
 ## Tooling Rules
 

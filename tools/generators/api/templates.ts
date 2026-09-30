@@ -25,6 +25,7 @@ export function renderQuery(options: ApiGeneratorOptions) {
 import { keepPreviousData, queryOptions, useQuery } from '@tanstack/react-query'
 import { z } from 'zod'
 import { apiClient } from '@/lib/api-client'
+import { normalizeApiError } from '@/lib/api-error'
 import type { QueryConfig } from '@/lib/react-query'
 
 // API_GENERATOR_TODO: replace the empty strict object with the endpoint's normalized request fields and defaults.
@@ -40,7 +41,12 @@ export type ${operationType}Response = z.infer<typeof ${operation}ResponseSchema
 export function normalize${operationType}Input(
   input: ${operationType}Input = {},
 ): Normalized${operationType}Input {
-  return ${operation}InputSchema.parse(input)
+  try {
+    return ${operation}InputSchema.parse(input)
+  } catch (error) {
+    // API_GENERATOR_TODO: choose 'input' for editable input or 'internal' for application-generated invariants.
+    throw normalizeApiError(error, { validationPhase: 'request', requestOrigin: 'input' })
+  }
 }
 
 export const ${resource}Keys = {
@@ -50,23 +56,26 @@ export const ${resource}Keys = {
     [...${resource}Keys.lists(), input] as const,
 }
 
-async function request${operationType}(input: Normalized${operationType}Input) {
+async function request${operationType}(input: Normalized${operationType}Input, signal?: AbortSignal) {
   // API_GENERATOR_TODO: confirm the HTTP method, endpoint path, parameter serialization, and authentication expectations.
   return apiClient.get('/${options.resource}', {
     params: input,
+    signal,
     responseSchema: ${operation}ResponseSchema,
   })
 }
 
-export async function ${operation}(input: ${operationType}Input = {}) {
-  return request${operationType}(normalize${operationType}Input(input))
+export async function ${operation}(input: ${operationType}Input = {}, signal?: AbortSignal) {
+  return request${operationType}(normalize${operationType}Input(input), signal)
 }
 
 export function ${operation}QueryOptions(input: ${operationType}Input = {}) {
   const normalized = normalize${operationType}Input(input)
   return queryOptions({
     queryKey: ${resource}Keys.list(normalized),
-    queryFn: () => request${operationType}(normalized),
+    queryFn: ({ signal }) => request${operationType}(normalized, signal),
+    // API_GENERATOR_TODO: list only status-qualified backend codes proving an internal request-contract fault; leave empty otherwise.
+    meta: { requestContractErrors: [] },
     // API_GENERATOR_TODO: confirm that retaining previous data is correct for this parameterized resource.
     placeholderData: keepPreviousData,
   })
@@ -103,6 +112,12 @@ describe('${operation}', () => {
 
   // API_GENERATOR_TODO: render the generated hook with the shared Query test wrapper and an MSW handler.
   it.todo('composes supported consumer query configuration')
+
+  // API_GENERATOR_TODO: prove abort reaches HTTP, cancellation is silent, and initial/background errors have one safe feedback owner without stale placeholder data.
+  it.todo('forwards cancellation and owns safe failure recovery')
+
+  // API_GENERATOR_TODO: cover request origin and status-qualified internal backend codes when this endpoint has them.
+  it.todo('classifies request-contract failures for sanitized reporting')
 })
 `,
   }
@@ -118,6 +133,8 @@ export function renderMutation(options: ApiGeneratorOptions) {
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { apiClient } from '@/lib/api-client'
+import { normalizeApiError } from '@/lib/api-error'
+import { errorReporting } from '@/lib/error-reporting'
 import type { MutationConfig } from '@/lib/react-query'
 
 // API_GENERATOR_TODO: replace the empty strict object with every mutation input field and validation rule.
@@ -134,7 +151,13 @@ export const ${resource}Keys = {
 }
 
 export async function ${operation}(input: ${operationType}Input) {
-  const parsed = ${operation}InputSchema.parse(input)
+  let parsed: ${operationType}Input
+  try {
+    parsed = ${operation}InputSchema.parse(input)
+  } catch (error) {
+    // API_GENERATOR_TODO: choose 'input' for editable input or 'internal' for application-generated invariants.
+    throw normalizeApiError(error, { validationPhase: 'request', requestOrigin: 'input' })
+  }
   // API_GENERATOR_TODO: confirm the HTTP method, endpoint path, body serialization, and authentication expectations.
   return apiClient.post('/${options.resource}', {
     body: parsed,
@@ -144,21 +167,44 @@ export async function ${operation}(input: ${operationType}Input) {
 
 type Use${operationType}Options = {
   mutationConfig?: MutationConfig<typeof ${operation}>
+  onFollowUpError?: (phase: 'refresh' | 'callback') => void
 }
 
 export function use${operationType}({
   mutationConfig,
+  onFollowUpError,
 }: Use${operationType}Options = {}) {
   const queryClient = useQueryClient()
   const { onSuccess, ...restConfig } = mutationConfig ?? {}
 
+  const notifyFollowUpError = (phase: 'refresh' | 'callback') => {
+    try {
+      onFollowUpError?.(phase)
+    } catch (error) {
+      errorReporting.report(error, { source: 'mutation' })
+    }
+  }
+
+  // API_GENERATOR_TODO: choose one visible local or global owner for write failures; keep authentication copy in the application notice.
   return useMutation({
     ...restConfig,
+    // API_GENERATOR_TODO: list only status-qualified backend codes proving an internal request-contract fault; leave empty otherwise.
+    meta: { ...restConfig.meta, requestContractErrors: [] },
     mutationFn: ${operation},
     onSuccess: async (data, variables, context, mutationContext) => {
-      // API_GENERATOR_TODO: replace this conservative resource invalidation with the precise canonical cache effect (including rollback if optimistic).
-      await queryClient.invalidateQueries({ queryKey: ${resource}Keys.all })
-      await onSuccess?.(data, variables, context, mutationContext)
+      // API_GENERATOR_TODO: replace conservative invalidation with the precise cache effect; if optimistic, snapshot before mutation and roll back on failure.
+      const outcomes = await Promise.allSettled([
+        Promise.resolve().then(() => queryClient.invalidateQueries(
+          { queryKey: ${resource}Keys.all }, { throwOnError: true },
+        )),
+        Promise.resolve().then(() => onSuccess?.(data, variables, context, mutationContext)),
+      ])
+      for (const [index, outcome] of outcomes.entries()) {
+        if (outcome.status === 'rejected') {
+          errorReporting.report(outcome.reason, { source: 'mutation' })
+          notifyFollowUpError(index === 0 ? 'refresh' : 'callback')
+        }
+      }
     },
   })
 }
@@ -175,6 +221,12 @@ describe('${operation}', () => {
 
   // API_GENERATOR_TODO: render the hook with the shared Query test wrapper and prove the exact cache synchronization or rollback behavior.
   it.todo('applies the canonical cache effect and composes consumer callbacks')
+
+  // API_GENERATOR_TODO: prove a confirmed write remains successful after refresh/callback failure, with a separate safe follow-up notice and report.
+  it.todo('keeps confirmed write outcome when follow-up work fails')
+
+  // API_GENERATOR_TODO: choose local or global visible feedback for write failure; test no duplicate feedback, cancellation silence, and no automatic replay.
+  it.todo('owns safe mutation failure feedback without replay')
 })
 `,
   }

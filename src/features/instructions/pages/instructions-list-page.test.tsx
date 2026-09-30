@@ -30,6 +30,103 @@ function page(pageNumber = 1): InstructionPage {
 }
 
 describe('InstructionsListPage', () => {
+  it('keeps cancellation silent', async () => {
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    server.use(
+      http.get(instructionsUrl, async () => {
+        await gate
+        return HttpResponse.json(page())
+      }),
+    )
+    const { queryClient } = render(<InstructionsListPage />)
+    await queryClient.cancelQueries()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Não foi possível/)).not.toBeInTheDocument()
+    release()
+  })
+
+  it('retains valid results when a background refresh fails and offers recovery', async () => {
+    const user = userEvent.setup()
+    let fail = false
+    server.use(
+      http.get(instructionsUrl, () =>
+        fail
+          ? HttpResponse.json(
+              { message: 'PRIVATE BACKEND TEXT' },
+              { status: 503 },
+            )
+          : HttpResponse.json(page()),
+      ),
+    )
+    const { queryClient } = render(<InstructionsListPage />)
+    expect(await screen.findAllByText('MPV-001')).not.toHaveLength(0)
+    fail = true
+    await queryClient.invalidateQueries()
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Os resultados anteriores continuam disponíveis.',
+    )
+    expect(screen.getAllByText('MPV-001')).not.toHaveLength(0)
+    expect(screen.queryByText('PRIVATE BACKEND TEXT')).not.toBeInTheDocument()
+    fail = false
+    await user.click(screen.getByRole('button', { name: 'Atualizar lista' }))
+    await waitFor(() =>
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument(),
+    )
+  })
+
+  it('does not show the old page as a successful new result after a failed page request', async () => {
+    const user = userEvent.setup()
+    server.use(
+      http.get(instructionsUrl, ({ request }) => {
+        const requested = Number(new URL(request.url).searchParams.get('page'))
+        return requested === 2
+          ? HttpResponse.json(
+              { message: 'PRIVATE PAGE', code: 'INVALID_PAGINATION' },
+              { status: 400 },
+            )
+          : HttpResponse.json(page())
+      }),
+    )
+    render(<InstructionsListPage />)
+    expect(await screen.findAllByText('MPV-001')).not.toHaveLength(0)
+    await user.click(screen.getByRole('link', { name: 'Próxima página' }))
+    expect(
+      await screen.findByText('Não foi possível carregar esta página.'),
+    ).toBeVisible()
+    expect(screen.queryByText('MPV-001')).not.toBeInTheDocument()
+    expect(screen.queryByText('PRIVATE PAGE')).not.toBeInTheDocument()
+  })
+
+  it('shows safe copy for an invalid response schema', async () => {
+    server.use(
+      http.get(instructionsUrl, () =>
+        HttpResponse.json({ items: ['PRIVATE INVALID DATA'] }),
+      ),
+    )
+    render(<InstructionsListPage />)
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Os dados recebidos não puderam ser exibidos com segurança.',
+    )
+    expect(screen.queryByText('PRIVATE INVALID DATA')).not.toBeInTheDocument()
+  })
+
+  it('keeps 401 query feedback neutral without a local authentication alert', async () => {
+    server.use(
+      http.get(instructionsUrl, () =>
+        HttpResponse.json({ message: 'PRIVATE AUTH' }, { status: 401 }),
+      ),
+    )
+    render(<InstructionsListPage />)
+    expect(
+      await screen.findByText('A lista de instruções está indisponível.'),
+    ).toBeVisible()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.queryByText('PRIVATE AUTH')).not.toBeInTheDocument()
+  })
+
   it('shows initial loading, renders results, and retains search across pagination', async () => {
     const user = userEvent.setup()
     const requests: URL[] = []
@@ -91,10 +188,9 @@ describe('InstructionsListPage', () => {
     )
 
     render(<InstructionsListPage />)
-    expect(await screen.findByText('Você está offline.')).toBeVisible()
     expect(
-      screen.getByText(
-        'Sem conexão. Verifique sua internet e tente novamente.',
+      await screen.findByText(
+        'Não foi possível conectar ao serviço. Tente novamente.',
       ),
     ).toBeVisible()
 

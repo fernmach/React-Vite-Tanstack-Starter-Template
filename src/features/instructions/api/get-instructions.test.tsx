@@ -1,6 +1,13 @@
+import { QueryClient } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { ApiError } from '@/lib/api-error'
+import { errorReporting } from '@/lib/error-reporting'
+import { createQueryClient } from '@/lib/react-query'
+import {
+  resetAuthenticationRequiredEpisode,
+  subscribeAuthenticationRequired,
+} from '@/lib/api-events'
 import { server } from '@/mocks/server'
 import { instructionsUrl } from '@/mocks/instructions-handlers'
 import {
@@ -13,6 +20,66 @@ import { instructionKeys } from './instruction-keys'
 import { renderHook, waitFor } from '@/test/render'
 
 describe('getInstructions', () => {
+  it('reports a malformed 401 once while preserving the authentication event', async () => {
+    resetAuthenticationRequiredEpisode()
+    const reporter = vi.fn()
+    errorReporting.configure({ reporter })
+    const auth = vi.fn()
+    const unsubscribe = subscribeAuthenticationRequired(auth)
+    const client = createQueryClient()
+    server.use(
+      http.get(instructionsUrl, () =>
+        HttpResponse.json({ secret: 'private body' }, { status: 401 }),
+      ),
+    )
+    try {
+      await expect(
+        client.fetchQuery(getInstructionsQueryOptions()),
+      ).rejects.toMatchObject({ validationPhase: 'error-payload', status: 401 })
+      expect(auth).toHaveBeenCalledTimes(1)
+      expect(reporter).toHaveBeenCalledTimes(1)
+      expect(reporter).toHaveBeenCalledWith(
+        expect.objectContaining({
+          source: 'query',
+          category: 'contract',
+          status: 401,
+        }),
+      )
+      expect(JSON.stringify(reporter.mock.calls)).not.toContain('private body')
+    } finally {
+      unsubscribe()
+      client.clear()
+      resetAuthenticationRequiredEpisode()
+      errorReporting.configure({ reporter: undefined, development: false })
+    }
+  })
+
+  it('reports the feature-owned internal pagination rejection through Query', async () => {
+    const reporter = vi.fn()
+    errorReporting.configure({ reporter })
+    const client = createQueryClient()
+    server.use(
+      http.get(instructionsUrl, () =>
+        HttpResponse.json(
+          { message: 'private diagnostic', code: 'INVALID_PAGINATION' },
+          { status: 400 },
+        ),
+      ),
+    )
+    try {
+      await expect(
+        client.fetchQuery(getInstructionsQueryOptions()),
+      ).rejects.toMatchObject({ status: 400 })
+      expect(reporter).toHaveBeenCalledExactlyOnceWith({
+        source: 'query',
+        category: 'contract',
+        status: 400,
+      })
+    } finally {
+      client.clear()
+      errorReporting.configure({ reporter: undefined, development: false })
+    }
+  })
   it('normalizes defaults and produces stable keys from every list input', () => {
     const normalized = normalizeInstructionsInput({ term: '  montagem  ' })
     const explicit = normalizeInstructionsInput({
@@ -68,7 +135,11 @@ describe('getInstructions', () => {
 
   it('rejects malformed inputs and responses as validation ApiErrors', async () => {
     expect(() => normalizeInstructionsInput({ page: 0 })).toThrow(
-      expect.objectContaining<Partial<ApiError>>({ kind: 'validation' }),
+      expect.objectContaining<Partial<ApiError>>({
+        kind: 'validation',
+        validationPhase: 'request',
+        requestOrigin: 'internal',
+      }),
     )
 
     server.use(
@@ -88,7 +159,30 @@ describe('getInstructions', () => {
 
     await expect(getInstructions()).rejects.toMatchObject({
       kind: 'validation',
+      validationPhase: 'response',
     })
+  })
+
+  it('passes the Query cancellation signal to Axios', async () => {
+    const listener = vi.fn()
+    const unsubscribe = subscribeAuthenticationRequired(listener)
+    const controller = new AbortController()
+    const options = getInstructionsQueryOptions()
+    const queryFn = options.queryFn
+    if (!queryFn) throw new Error('Expected a query function')
+
+    controller.abort()
+    await expect(
+      queryFn({
+        client: new QueryClient(),
+        meta: undefined,
+        signal: controller.signal,
+        queryKey: options.queryKey,
+      }),
+    ).rejects.toMatchObject({ code: 'ERR_CANCELED' })
+    expect(listener).not.toHaveBeenCalled()
+    unsubscribe()
+    resetAuthenticationRequiredEpisode()
   })
 
   it('honors consumer query configuration without changing the canonical key', async () => {

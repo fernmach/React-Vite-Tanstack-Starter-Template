@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/table'
 import type { ApiError } from '@/lib/api-error'
 import type { InstructionPage } from '../model/instruction'
+import { instructionQueryErrorCopy } from '../model/instruction-error-copy'
 import { DeleteInstructionDialog } from './delete-instruction-dialog'
 import { InstructionActiveSwitch } from './instruction-active-switch'
 
@@ -39,16 +40,9 @@ export function InstructionsResults({
     return (
       <div
         className="border-destructive bg-card rounded-sm border p-6"
-        role="alert"
+        role={error.status === 401 ? 'status' : 'alert'}
       >
-        <p className="font-medium">
-          {error.kind === 'network'
-            ? 'Você está offline.'
-            : 'Não foi possível carregar as instruções.'}
-        </p>
-        <p className="text-muted-foreground mt-1 text-sm">
-          {safeErrorDetail(error)}
-        </p>
+        <p className="font-medium">{instructionQueryErrorCopy(error)}</p>
         <Button className="mt-4" size="sm" onClick={onRetry}>
           Tentar novamente
         </Button>
@@ -117,17 +111,4 @@ export function InstructionsResults({
       </Table>
     </div>
   )
-}
-
-function safeErrorDetail(error: ApiError) {
-  switch (error.kind) {
-    case 'network':
-      return 'Sem conexão. Verifique sua internet e tente novamente.'
-    case 'http':
-      return error.message
-    case 'validation':
-      return 'Os dados recebidos não puderam ser exibidos com segurança. Tente novamente.'
-    case 'unknown':
-      return 'Ocorreu um erro inesperado. Tente novamente.'
-  }
 }

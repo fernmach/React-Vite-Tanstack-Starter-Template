@@ -1,4 +1,4 @@
-import { useState, type MouseEvent } from 'react'
+import { useRef, useState, type MouseEvent } from 'react'
 import { Trash2 } from 'lucide-react'
 import {
   AlertDialog,
@@ -12,7 +12,10 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { isApiCancellation, normalizeApiError } from '@/lib/api-error'
 import { useArchiveInstruction } from '../api/archive-instruction'
+import { useRefreshInstructionLists } from '../api/use-refresh-instruction-lists'
+import { instructionWriteErrorCopy } from '../model/instruction-error-copy'
 import type { Instruction } from '../model/instruction'
 
 export function DeleteInstructionDialog({
@@ -21,24 +24,44 @@ export function DeleteInstructionDialog({
   compact = false,
 }: {
   instruction: Instruction
-  onAnnounce: (message: string) => void
+  onAnnounce: (message: string, visible?: boolean) => void
   compact?: boolean
 }) {
   const [open, setOpen] = useState(false)
-  const mutation = useArchiveInstruction()
+  const refreshList = useRefreshInstructionLists()
+  const followUpFailure = useRef<'refresh' | 'callback' | null>(null)
+  const [feedback, setFeedback] = useState<{
+    text: string
+    neutral: boolean
+  } | null>(null)
+  const mutation = useArchiveInstruction({
+    onFollowUpError: (phase) => {
+      followUpFailure.current = phase
+    },
+  })
 
   async function confirm(event: MouseEvent<HTMLButtonElement>) {
     event.preventDefault()
     if (mutation.isPending) return
+    setFeedback(null)
+    followUpFailure.current = null
 
     try {
       await mutation.mutateAsync({ id: instruction.id })
       setOpen(false)
-      onAnnounce(`Instrução ${instruction.code} arquivada com sucesso.`)
-    } catch {
-      onAnnounce(
-        `Não foi possível arquivar a instrução ${instruction.code}. Tente novamente.`,
-      )
+      if (followUpFailure.current)
+        onAnnounce(
+          followUpFailure.current === 'refresh'
+            ? 'A instrução foi arquivada, mas a lista não pôde ser atualizada. Atualize a página para conferir os dados.'
+            : 'A instrução foi arquivada, mas houve uma falha após o envio. Atualize a página para conferir os dados.',
+          true,
+        )
+      else onAnnounce(`Instrução ${instruction.code} arquivada com sucesso.`)
+    } catch (error) {
+      if (isApiCancellation(error)) return
+      const apiError = normalizeApiError(error)
+      const text = instructionWriteErrorCopy(apiError, 'arquivar')
+      setFeedback({ text, neutral: apiError.status === 401 })
     }
   }
 
@@ -46,7 +69,10 @@ export function DeleteInstructionDialog({
     <AlertDialog
       open={open}
       onOpenChange={(nextOpen) => {
-        if (!mutation.isPending) setOpen(nextOpen)
+        if (!mutation.isPending) {
+          setOpen(nextOpen)
+          if (nextOpen) setFeedback(null)
+        }
       }}
     >
       <AlertDialogTrigger asChild>
@@ -72,6 +98,25 @@ export function DeleteInstructionDialog({
             lista. O arquivamento é reversível pelo serviço de dados.
           </AlertDialogDescription>
         </AlertDialogHeader>
+        {feedback && (
+          <div>
+            <p
+              className="text-destructive text-sm"
+              role={feedback.neutral ? 'status' : 'alert'}
+            >
+              {feedback.text}
+            </p>
+            {mutation.error?.status === 404 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void refreshList()}
+              >
+                Atualizar lista
+              </Button>
+            )}
+          </div>
+        )}
         <AlertDialogFooter>
           <AlertDialogCancel disabled={mutation.isPending}>
             Cancelar

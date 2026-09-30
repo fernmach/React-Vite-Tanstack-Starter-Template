@@ -1,7 +1,8 @@
 import axios, { type AxiosRequestConfig, type Method } from 'axios'
 import { type ZodType } from 'zod'
 import { env } from '@/config/env'
-import { normalizeApiError } from './api-error'
+import { publishAuthenticationRequired } from './api-events'
+import { isApiCancellation, normalizeApiError } from './api-error'
 
 const axiosInstance = axios.create({
   baseURL: env.API_URL,
@@ -10,6 +11,16 @@ const axiosInstance = axios.create({
     Accept: 'application/json',
     'Content-Type': 'application/json',
   },
+})
+
+axiosInstance.interceptors.response.use(undefined, (error: unknown) => {
+  if (isApiCancellation(error)) return Promise.reject(error)
+
+  const normalized = normalizeApiError(error)
+  if (normalized.status === 401) {
+    publishAuthenticationRequired(normalized.occurrenceId)
+  }
+  return Promise.reject(normalized)
 })
 
 type ApiRequestOptions<TData> = Omit<
@@ -48,17 +59,17 @@ async function request<TData>(
   path: string,
   { responseSchema, body, ...config }: ApiRequestOptions<TData>,
 ): Promise<TData> {
-  try {
-    const response = await axiosInstance.request<unknown>({
-      ...config,
-      method,
-      url: path,
-      data: body,
-    })
-    return responseSchema.parse(response.data)
-  } catch (error) {
-    throw normalizeApiError(error)
+  const response = await axiosInstance.request<unknown>({
+    ...config,
+    method,
+    url: path,
+    data: body,
+  })
+  const parsed = responseSchema.safeParse(response.data)
+  if (!parsed.success) {
+    throw normalizeApiError(parsed.error, { validationPhase: 'response' })
   }
+  return parsed.data
 }
 
 export const apiClient: ApiClient = {
