@@ -33,6 +33,36 @@ function page(items: Instruction[], pageNumber: number): InstructionPage {
 }
 
 describe('setInstructionActive', () => {
+  it('keeps a successful write successful when refresh and consumer callbacks fail', async () => {
+    server.use(
+      http.patch(`${instructionsUrl}/*`, () =>
+        HttpResponse.json({ ...instruction, active: false }),
+      ),
+    )
+    const onFollowUpError = vi.fn()
+    const { queryClient, result } = renderHook(() =>
+      useSetInstructionActive({
+        onFollowUpError,
+        mutationConfig: {
+          onSuccess: () => {
+            throw new Error('callback')
+          },
+        },
+      }),
+    )
+    vi.spyOn(queryClient, 'invalidateQueries').mockRejectedValue(
+      new Error('refresh'),
+    )
+    await expect(
+      act(() =>
+        result.current.mutateAsync({ id: instruction.id, active: false }),
+      ),
+    ).resolves.toMatchObject({ active: false })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(onFollowUpError).toHaveBeenCalledWith('refresh')
+    expect(onFollowUpError).toHaveBeenCalledWith('callback')
+  })
+
   it('PATCHes the encoded id with exactly the active field and validates responses', async () => {
     await expect(
       setInstructionActive({ id: ' ', active: false }),
@@ -95,9 +125,10 @@ describe('setInstructionActive', () => {
 
     releaseRequest()
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(invalidate).toHaveBeenCalledWith({
-      queryKey: instructionKeys.lists(),
-    })
+    expect(invalidate).toHaveBeenCalledWith(
+      { queryKey: instructionKeys.lists() },
+      { throwOnError: true },
+    )
   })
 
   it('cancels lists, restores exact snapshots, invalidates, and composes callbacks on failure', async () => {
@@ -129,9 +160,10 @@ describe('setInstructionActive', () => {
     expect(cancel).toHaveBeenCalledWith({ queryKey: instructionKeys.lists() })
     expect(queryClient.getQueryData(keyOne)).toEqual(originalOne)
     expect(queryClient.getQueryData(keyTwo)).toEqual(originalTwo)
-    expect(invalidate).toHaveBeenCalledWith({
-      queryKey: instructionKeys.lists(),
-    })
+    expect(invalidate).toHaveBeenCalledWith(
+      { queryKey: instructionKeys.lists() },
+      { throwOnError: true },
+    )
     expect(onMutate).toHaveBeenCalledOnce()
     expect(onError.mock.calls[0]?.[2]).toBe(consumerContext)
     expect(onSettled.mock.calls[0]?.[3]).toBe(consumerContext)

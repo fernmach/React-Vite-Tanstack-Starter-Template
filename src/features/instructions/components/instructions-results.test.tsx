@@ -70,7 +70,7 @@ describe('InstructionsResults', () => {
         }),
         result: null,
       },
-      text: 'Você está offline.',
+      text: 'Não foi possível conectar ao serviço. Tente novamente.',
     },
     {
       props: {
@@ -82,7 +82,7 @@ describe('InstructionsResults', () => {
         }),
         result: null,
       },
-      text: 'Não foi possível carregar as instruções.',
+      text: 'Não foi possível carregar as instruções. Tente novamente.',
     },
   ])('distingue o estado: $text', ({ props, text }) => {
     render(<InstructionsResults {...props} onRetry={vi.fn()} />)
@@ -92,7 +92,7 @@ describe('InstructionsResults', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('shows a validated HTTP message without exposing transport metadata', () => {
+  it('never renders a validated backend message or transport metadata', () => {
     render(
       <InstructionsResults
         loading={false}
@@ -111,10 +111,42 @@ describe('InstructionsResults', () => {
     )
 
     expect(
-      screen.getByText('Serviço temporariamente indisponível.'),
+      screen.getByText(
+        'Não foi possível carregar as instruções. Tente novamente.',
+      ),
     ).toBeVisible()
     expect(
-      screen.queryByText(/PRIVATE_CODE|private cause/),
+      screen.queryByText(
+        /Serviço temporariamente indisponível|PRIVATE_CODE|private cause/,
+      ),
+    ).not.toBeInTheDocument()
+  })
+
+  it('keeps a 401 query failure inline without repeating the authentication alert', () => {
+    render(
+      <InstructionsResults
+        loading={false}
+        error={
+          new ApiError({
+            kind: 'http',
+            status: 401,
+            message: 'Private session details',
+          })
+        }
+        result={null}
+        onRetry={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'A lista de instruções está indisponível.',
+    )
+    expect(
+      screen.getByRole('button', { name: 'Tentar novamente' }),
+    ).toBeVisible()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('Private session details'),
     ).not.toBeInTheDocument()
   })
 })

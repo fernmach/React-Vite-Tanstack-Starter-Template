@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Plus } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { normalizeApiError } from '@/lib/api-error'
+import { isApiCancellation, normalizeApiError } from '@/lib/api-error'
+import { instructionQueryErrorCopy } from '../model/instruction-error-copy'
 import { useInstructions } from '../api/get-instructions'
 import { InstructionCard } from '../components/instruction-card'
 import { InstructionsPagination } from '../components/instructions-pagination'
@@ -15,26 +16,42 @@ export function InstructionsListPage() {
   const [term, setTerm] = useState('')
   const [page, setPage] = useState(1)
   const [announcement, setAnnouncement] = useState('')
+  const [visibleAnnouncement, setVisibleAnnouncement] = useState(false)
   const actionAnnouncementRef = useRef(false)
   const instructionsQuery = useInstructions({
     input: { term, page, pageSize: DEFAULT_PAGE_SIZE },
   })
 
   useEffect(() => {
-    if (!instructionsQuery.data || actionAnnouncementRef.current) return
+    if (
+      !instructionsQuery.data ||
+      instructionsQuery.isPlaceholderData ||
+      actionAnnouncementRef.current
+    )
+      return
 
     setAnnouncement(
       `${instructionsQuery.data.total} resultados encontrados. Página ${instructionsQuery.data.page} de ${instructionsQuery.data.totalPages}.`,
     )
-  }, [instructionsQuery.data])
+    setVisibleAnnouncement(false)
+  }, [instructionsQuery.data, instructionsQuery.isPlaceholderData])
 
-  const result = instructionsQuery.data ?? null
-  const error = instructionsQuery.error
-    ? normalizeApiError(instructionsQuery.error)
-    : null
-  const announceAction = (message: string) => {
+  const result = instructionsQuery.isPlaceholderData
+    ? null
+    : (instructionsQuery.data ?? null)
+  const error =
+    instructionsQuery.error && !isApiCancellation(instructionsQuery.error)
+      ? normalizeApiError(instructionsQuery.error)
+      : null
+  const initialError = result ? null : error
+  const refreshError = result ? error : null
+  const loading =
+    instructionsQuery.isPending ||
+    (instructionsQuery.isPlaceholderData && !error)
+  const announceAction = (message: string, visible = false) => {
     actionAnnouncementRef.current = true
     setAnnouncement(message)
+    setVisibleAnnouncement(visible)
   }
 
   return (
@@ -70,15 +87,38 @@ export function InstructionsListPage() {
       <p className="sr-only" role="status" aria-live="polite">
         {announcement}
       </p>
+      {visibleAnnouncement && (
+        <p className="border-border mt-4 rounded-sm border p-3" role="status">
+          {announcement}
+        </p>
+      )}
       <section aria-label="Lista de instruções" className="mt-4">
+        {refreshError && (
+          <div
+            className="border-destructive bg-card mb-4 rounded-sm border p-4"
+            role={refreshError.status === 401 ? 'status' : 'alert'}
+          >
+            <p>
+              {instructionQueryErrorCopy(refreshError)} Os resultados anteriores
+              continuam disponíveis.
+            </p>
+            <Button
+              className="mt-2"
+              size="sm"
+              onClick={() => void instructionsQuery.refetch()}
+            >
+              Atualizar lista
+            </Button>
+          </div>
+        )}
         <InstructionsResults
-          loading={instructionsQuery.isPending}
-          error={error}
+          loading={loading}
+          error={initialError}
           result={result}
           onRetry={() => void instructionsQuery.refetch()}
           onAnnounce={announceAction}
         />
-        {!instructionsQuery.isPending && !error && result && (
+        {!loading && result && (
           <div className="md:hidden">
             {result.items.map((item) => (
               <InstructionCard
@@ -90,7 +130,7 @@ export function InstructionsListPage() {
           </div>
         )}
       </section>
-      {!instructionsQuery.isPending && !error && result && (
+      {!loading && result && (
         <InstructionsPagination
           result={result}
           onPageChange={(nextPage) => {

@@ -20,18 +20,28 @@ export function normalizeInstructionsInput(
   try {
     return instructionQuerySchema.parse(input)
   } catch (error) {
-    throw normalizeApiError(error)
+    throw normalizeApiError(error, {
+      validationPhase: 'request',
+      requestOrigin: 'internal',
+    })
   }
 }
 
-export async function getInstructions(input: GetInstructionsInput = {}) {
+export async function getInstructions(
+  input: GetInstructionsInput = {},
+  signal?: AbortSignal,
+) {
   const params = normalizeInstructionsInput(input)
-  return requestInstructions(params)
+  return requestInstructions(params, signal)
 }
 
-function requestInstructions(params: NormalizedInstructionQuery) {
+function requestInstructions(
+  params: NormalizedInstructionQuery,
+  signal?: AbortSignal,
+) {
   return apiClient.get('/instructions', {
     params,
+    signal,
     responseSchema: instructionPageSchema,
   })
 }
@@ -40,8 +50,11 @@ export function getInstructionsQueryOptions(input: GetInstructionsInput = {}) {
   const normalized = normalizeInstructionsInput(input)
   return queryOptions({
     queryKey: instructionKeys.list(normalized),
-    queryFn: () => requestInstructions(normalized),
+    queryFn: ({ signal }) => requestInstructions(normalized, signal),
     placeholderData: keepPreviousData,
+    meta: {
+      requestContractErrors: [{ status: 400, code: 'INVALID_PAGINATION' }],
+    },
   })
 }
 

@@ -6,6 +6,7 @@ import {
 import { z } from 'zod'
 import { apiClient } from '@/lib/api-client'
 import { normalizeApiError } from '@/lib/api-error'
+import { errorReporting } from '@/lib/error-reporting'
 import type { MutationConfig } from '@/lib/react-query'
 import {
   instructionPageSchema,
@@ -31,7 +32,10 @@ function parseInput(input: SetInstructionActiveInput) {
   try {
     return setInstructionActiveInputSchema.parse(input)
   } catch (error) {
-    throw normalizeApiError(error)
+    throw normalizeApiError(error, {
+      validationPhase: 'request',
+      requestOrigin: 'internal',
+    })
   }
 }
 
@@ -47,16 +51,30 @@ type Snapshot = Array<[QueryKey, InstructionPage | undefined]>
 
 type UseSetInstructionActiveOptions = {
   mutationConfig?: MutationConfig<typeof setInstructionActive>
+  onFollowUpError?: (phase: 'refresh' | 'callback') => void
 }
 
 export function useSetInstructionActive({
   mutationConfig,
+  onFollowUpError,
 }: UseSetInstructionActiveOptions = {}) {
   const queryClient = useQueryClient()
-  const { onMutate, onError, onSettled, ...restConfig } = mutationConfig ?? {}
+  const notifyFollowUpError = (phase: 'refresh' | 'callback') => {
+    try {
+      onFollowUpError?.(phase)
+    } catch (error) {
+      errorReporting.report(error, { source: 'mutation' })
+    }
+  }
+  const { onMutate, onError, onSuccess, onSettled, ...restConfig } =
+    mutationConfig ?? {}
 
   return useMutation({
     ...restConfig,
+    meta: {
+      ...restConfig.meta,
+      requestContractErrors: [{ status: 400, code: 'INVALID_PATCH_BODY' }],
+    },
     mutationFn: setInstructionActive,
     onMutate: async (input, context) => {
       const parsed = parseInput(input)
@@ -104,22 +122,46 @@ export function useSetInstructionActive({
           mutationContext,
         )
       } catch (consumerError) {
-        await queryClient.invalidateQueries({
-          queryKey: instructionKeys.lists(),
-        })
-        throw consumerError
+        errorReporting.report(consumerError, { source: 'mutation' })
       }
     },
-    onSettled: (data, error, input, context, mutationContext) =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: instructionKeys.lists() }),
-        onSettled?.(
+    onSuccess: async (data, input, context, mutationContext) => {
+      try {
+        await onSuccess?.(
           data,
-          error,
           input,
           context?.consumerContext,
           mutationContext,
+        )
+      } catch (error) {
+        errorReporting.report(error, { source: 'mutation' })
+        notifyFollowUpError('callback')
+      }
+    },
+    onSettled: async (data, error, input, context, mutationContext) => {
+      const outcomes = await Promise.allSettled([
+        Promise.resolve().then(() =>
+          queryClient.invalidateQueries(
+            { queryKey: instructionKeys.lists() },
+            { throwOnError: true },
+          ),
         ),
-      ]).then(() => undefined),
+        Promise.resolve().then(() =>
+          onSettled?.(
+            data,
+            error,
+            input,
+            context?.consumerContext,
+            mutationContext,
+          ),
+        ),
+      ])
+      for (const [index, outcome] of outcomes.entries()) {
+        if (outcome.status === 'rejected') {
+          errorReporting.report(outcome.reason, { source: 'mutation' })
+          if (!error) notifyFollowUpError(index === 0 ? 'refresh' : 'callback')
+        }
+      }
+    },
   })
 }

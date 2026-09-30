@@ -1,5 +1,20 @@
 # TODO
 
+## Error handling implementation — baseline complete
+
+- [x] Separate transport normalization from successful-response validation, carry validation phase and occurrence identity, and forward Instructions query cancellation.
+- [x] Compose Sonner-backed accessible notifications and application authentication-required effects with episode reset.
+- [x] Add sanitized vendor-neutral reporting, cache execution ownership, and reporter-failure isolation.
+- [x] Prove application, route, section, and startup containment with explicit recovery.
+- [x] Complete Instructions local mutation feedback, safe code mapping, placeholder isolation, and background query recovery (Task 5).
+- [x] Reconcile and enforce the error-handling contract in `AGENTS.md`, the generator, and `check:api` (Task 6).
+
+## Final hardening — complete
+
+- [x] Complete the final release audit and exclude externally generated `docs/frontend/**` artifacts from repository-owned Prettier checks without rewriting them.
+- [x] Remove development-only MSW modules and the public worker from production output, with a build-time module-graph assertion.
+- [x] Verify development interception in a standard browser: `/instrucoes` renders all 48 MSW-backed records without contract-error UI or browser errors.
+
 ## API layer program — complete
 
 - [x] Adopt and document the Bulletproof API-layer architecture.

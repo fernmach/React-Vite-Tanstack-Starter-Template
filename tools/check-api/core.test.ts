@@ -2,7 +2,12 @@ import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { allowedFixture, forbiddenFixture } from './fixtures'
+import {
+  allowedFixture,
+  errorHandlingAllowedFixture,
+  errorHandlingForbiddenFixture,
+  forbiddenFixture,
+} from './fixtures'
 import {
   formatApiArchitectureDiagnostics,
   inspectApiArchitecture,
@@ -76,6 +81,52 @@ void useMutation
       expect.objectContaining({
         code: 'API_OPERATION_HOOK',
         file: 'src/features/catalog/api/create-product.ts',
+      }),
+    ])
+  })
+
+  it('accepts explicit response schemas and presentation-free API modules', async () => {
+    const root = await createFixture(errorHandlingAllowedFixture)
+    await expect(inspectApiArchitecture(root)).resolves.toEqual([])
+  })
+
+  it('blocks missing response schemas, API notification imports, and unfinished test sentinels', async () => {
+    const root = await createFixture(errorHandlingForbiddenFixture)
+    const diagnostics = await inspectApiArchitecture(root)
+
+    expect(diagnostics).toEqual([
+      expect.objectContaining({
+        code: 'API_GENERATOR_TODO',
+        file: 'src/features/catalog/api/create-product.test.tsx',
+      }),
+      expect.objectContaining({
+        code: 'API_PRESENTATION_IMPORT',
+        file: 'src/features/catalog/api/create-product.ts',
+        message: expect.stringContaining('must not import notification'),
+      }),
+      expect.objectContaining({
+        code: 'API_RESPONSE_SCHEMA',
+        file: 'src/features/catalog/api/create-product.ts',
+        message: expect.stringContaining('explicit responseSchema'),
+      }),
+    ])
+  })
+
+  it('blocks notification imports in the shared client without treating string data as a generator TODO', async () => {
+    const root = await createFixture({
+      ...allowedFixture,
+      'src/lib/api-client.ts': `
+import { useNotifications } from '@/lib/notifications'
+export const unrelated = 'API_GENERATOR_TODO'
+void useNotifications
+`,
+    })
+    const diagnostics = await inspectApiArchitecture(root)
+
+    expect(diagnostics).toEqual([
+      expect.objectContaining({
+        code: 'API_PRESENTATION_IMPORT',
+        file: 'src/lib/api-client.ts',
       }),
     ])
   })

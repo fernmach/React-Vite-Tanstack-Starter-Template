@@ -28,6 +28,29 @@ function scriptKind(file: string) {
   return file.endsWith('x') ? ts.ScriptKind.TSX : ts.ScriptKind.TS
 }
 
+function generatorTodoPosition(text: string) {
+  const scanner = ts.createScanner(
+    ts.ScriptTarget.Latest,
+    false,
+    ts.LanguageVariant.JSX,
+    text,
+  )
+  for (
+    let token = scanner.scan();
+    token !== ts.SyntaxKind.EndOfFileToken;
+    token = scanner.scan()
+  ) {
+    if (
+      token !== ts.SyntaxKind.SingleLineCommentTrivia &&
+      token !== ts.SyntaxKind.MultiLineCommentTrivia
+    )
+      continue
+    const offset = scanner.getTokenText().indexOf('API_GENERATOR_TODO')
+    if (offset >= 0) return scanner.getTokenPos() + offset
+  }
+  return undefined
+}
+
 function hasModifier(node: ts.Node, kind: ts.SyntaxKind) {
   return ts.canHaveModifiers(node)
     ? (ts.getModifiers(node)?.some((modifier) => modifier.kind === kind) ??
@@ -229,6 +252,76 @@ function inspectOperation(
   }
 }
 
+function inspectErrorHandling(
+  diagnostics: ApiArchitectureDiagnostic[],
+  root: string,
+  sourceFile: ts.SourceFile,
+) {
+  const projectPath = toProjectPath(root, sourceFile.fileName)
+  const isFeatureApi = /^src\/features\/[^/]+\/api\//.test(projectPath)
+  const isSharedClient = projectPath === 'src/lib/api-client.ts'
+  if (!isFeatureApi && !isSharedClient) return
+
+  for (const statement of sourceFile.statements) {
+    if (
+      !ts.isImportDeclaration(statement) ||
+      !ts.isStringLiteral(statement.moduleSpecifier)
+    )
+      continue
+    const resolved = resolveImport(
+      root,
+      sourceFile.fileName,
+      statement.moduleSpecifier.text,
+    )
+    const target = resolved && toProjectPath(root, resolved)
+    if (
+      target === 'src/lib/notifications' ||
+      target?.startsWith('src/components/notifications/')
+    ) {
+      addDiagnostic(
+        diagnostics,
+        root,
+        sourceFile,
+        'API_PRESENTATION_IMPORT',
+        'Transport and feature API modules must not import notification presentation; application and feature UI own visible feedback.',
+        statement,
+      )
+    }
+  }
+
+  if (!isFeatureApi) return
+  function visit(node: ts.Node) {
+    if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      ts.isIdentifier(node.expression.expression) &&
+      node.expression.expression.text === 'apiClient'
+    ) {
+      const options = node.arguments[1]
+      const hasSchema =
+        options &&
+        ts.isObjectLiteralExpression(options) &&
+        options.properties.some(
+          (property) =>
+            (ts.isPropertyAssignment(property) ||
+              ts.isShorthandPropertyAssignment(property)) &&
+            property.name.getText(sourceFile) === 'responseSchema',
+        )
+      if (!hasSchema)
+        addDiagnostic(
+          diagnostics,
+          root,
+          sourceFile,
+          'API_RESPONSE_SCHEMA',
+          'Every apiClient call in a feature API operation must supply an explicit responseSchema in its options object.',
+          node,
+        )
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(sourceFile)
+}
+
 function inspectUiImports(
   diagnostics: ApiArchitectureDiagnostic[],
   root: string,
@@ -301,16 +394,15 @@ export async function inspectApiArchitecture(
     )
     const projectPath = toProjectPath(absoluteRoot, file)
 
-    if (!testFile.test(file) && text.includes('API_GENERATOR_TODO')) {
-      const position = text.indexOf('API_GENERATOR_TODO')
-      addDiagnostic(
-        diagnostics,
-        absoluteRoot,
-        sourceFile,
-        'API_GENERATOR_TODO',
-        'Resolve every API_GENERATOR_TODO before validation can pass.',
-        ts.getTokenAtPosition(sourceFile, position),
-      )
+    const todoPosition = generatorTodoPosition(text)
+    if (todoPosition !== undefined) {
+      diagnostics.push({
+        code: 'API_GENERATOR_TODO',
+        file: projectPath,
+        line: sourceFile.getLineAndCharacterOfPosition(todoPosition).line + 1,
+        message:
+          'Resolve every API_GENERATOR_TODO comment before validation can pass.',
+      })
     }
 
     if (
@@ -319,6 +411,8 @@ export async function inspectApiArchitecture(
     ) {
       inspectOperation(diagnostics, absoluteRoot, sourceFile)
     }
+    if (!testFile.test(file))
+      inspectErrorHandling(diagnostics, absoluteRoot, sourceFile)
     if (!testFile.test(file))
       inspectUiImports(diagnostics, absoluteRoot, sourceFile)
 
