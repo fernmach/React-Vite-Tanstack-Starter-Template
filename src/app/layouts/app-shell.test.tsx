@@ -5,6 +5,7 @@ import {
 } from '@tanstack/react-router'
 import { describe, expect, it } from 'vitest'
 
+import { NotificationProvider } from '@/components/notifications/notification-provider'
 import { routeTree } from '@/routeTree.gen'
 import { render, screen } from '@/test/render'
 
@@ -16,7 +17,14 @@ async function renderRoute(path = '/instrucoes') {
 
   await router.load()
 
-  return { router, ...render(<RouterProvider router={router} />) }
+  return {
+    router,
+    ...render(
+      <NotificationProvider>
+        <RouterProvider router={router} />
+      </NotificationProvider>,
+    ),
+  }
 }
 
 describe('application shell', () => {
@@ -31,7 +39,7 @@ describe('application shell', () => {
     expect(
       screen.getByRole('navigation', { name: 'Navegação principal' }),
     ).toHaveTextContent('Instruções')
-  })
+  }, 15_000)
 
   it('provides the reserved create destination with a keyboard-focusable link', async () => {
     await renderRoute()

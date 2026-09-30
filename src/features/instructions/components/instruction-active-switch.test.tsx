@@ -23,6 +23,48 @@ function Harness({ onAnnounce }: { onAnnounce: (message: string) => void }) {
 }
 
 describe('InstructionActiveSwitch', () => {
+  it('describes a failed refresh after a confirmed active write without rolling back', async () => {
+    const user = userEvent.setup()
+    render(<Harness onAnnounce={vi.fn()} />)
+    const control = await screen.findByRole('switch', {
+      name: 'Desativar instrução 186681',
+    })
+    server.use(
+      http.get(instructionsUrl, () =>
+        HttpResponse.json({ message: 'PRIVATE REFRESH' }, { status: 503 }),
+      ),
+    )
+    await user.click(control)
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'A alteração foi salva, mas a lista não pôde ser atualizada.',
+    )
+    expect(control).not.toBeChecked()
+    expect(screen.queryByText('PRIVATE REFRESH')).not.toBeInTheDocument()
+  })
+
+  it('shows the known missing-record copy and a list refresh action', async () => {
+    const user = userEvent.setup()
+    server.use(
+      http.patch(`${instructionsUrl}/*`, () =>
+        HttpResponse.json(
+          { message: 'PRIVATE', code: 'INSTRUCTION_NOT_FOUND' },
+          { status: 404 },
+        ),
+      ),
+    )
+    render(<Harness onAnnounce={vi.fn()} />)
+    await user.click(
+      await screen.findByRole('switch', { name: 'Desativar instrução 186681' }),
+    )
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Esta instrução não está mais disponível.',
+    )
+    expect(
+      screen.getByRole('button', { name: 'Atualizar lista' }),
+    ).toBeVisible()
+    expect(screen.queryByText('PRIVATE')).not.toBeInTheDocument()
+  })
+
   it('optimistically updates, disables duplicate input, and announces success', async () => {
     const user = userEvent.setup()
     const announce = vi.fn()
@@ -86,8 +128,9 @@ describe('InstructionActiveSwitch', () => {
     releaseRequest()
     await waitFor(() => expect(control).toBeChecked())
     expect(screen.getByText('Ativo')).toBeVisible()
-    expect(announce).toHaveBeenCalledWith(
-      expect.stringContaining('estado anterior foi restaurado'),
+    expect(announce).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Não foi possível alterar a instrução',
     )
   })
 })

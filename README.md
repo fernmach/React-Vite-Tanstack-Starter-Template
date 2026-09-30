@@ -73,6 +73,27 @@ Then open **[http://localhost:5173](http://localhost:5173)**.
 
 ## Components
 
+### Error containment and reporting
+
+Application and route failures show safe fallbacks with explicit retry, reload,
+and home navigation. `SectionErrorBoundary` from
+`src/components/errors/error-boundary.tsx` can isolate an optional page section.
+Startup failures, including invalid environment values and mock initialization,
+show a minimal fallback before React mounts.
+
+Install a vendor adapter with `errorReporting.configure({ reporter })` from
+`src/lib/error-reporting.ts`. The adapter receives sanitized structured records,
+never raw errors or request data. The default logs safe development diagnostics
+and sends nothing externally in production. Query and mutation cache callbacks
+report unexpected failures once per execution; retries remain disabled.
+Instructions query failures show safe Portuguese copy with retry. A failed
+background refresh keeps valid results visible, and write failures show local
+feedback beside the active control or inside the archive dialog. See the
+[error-handling architecture](docs/architecture/error-handling.md) for the
+ownership and recovery details.
+
+### UI primitives
+
 This template ships with `button`, `card`, and `input` from **shadcn/ui**, built on **Base UI** primitives. Add more with the CLI — pass `--base base` so it installs the Base UI versions:
 
 ```bash
@@ -172,7 +193,9 @@ MSW is the development and test API. Development starts the browser worker only
 when the build is in development mode and mocking is enabled. Tests start the
 Node server from `src/test/setup.ts`, fail on unhandled requests, and reset
 handlers and mock state after each test. Production never starts MSW, even if
-`VITE_ENABLE_API_MOCKING=true` is supplied accidentally.
+`VITE_ENABLE_API_MOCKING=true` is supplied accidentally. The production build
+also fails if an emitted chunk contains `src/mocks` or `msw`, and removes the
+development worker copied from `public/`.
 
 Create an operation with all required options:
 
@@ -189,8 +212,13 @@ bun run generate:api --feature instructions --kind query --name get-instruction-
 ```
 
 The feature must already exist. The generator refuses invalid names and
-collisions. Generated scaffolds are intentionally incomplete: resolve every
-`API_GENERATOR_TODO`, add MSW contract coverage, then run `bun run verify`.
+collisions. Generated scaffolds include query cancellation, validation context,
+reporting metadata, and mutation follow-up isolation. They are intentionally
+incomplete: resolve every `API_GENERATOR_TODO` in the operation and test,
+choose one visible feedback owner and precise cache behavior, add MSW contract
+coverage, then run `bun run verify`. `bun run check:api` blocks unresolved
+sentinels, missing explicit response schemas, and notification imports in API
+modules.
 
 ## Styling
 

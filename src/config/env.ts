@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { ApiError } from '@/lib/api-error'
+import { errorReporting } from '@/lib/error-reporting'
 
 const booleanStringSchema = z
   .enum(['true', 'false'])
@@ -35,6 +36,8 @@ export function parseEnvironment(source: EnvironmentSource): PublicEnvironment {
     throw new ApiError({
       kind: 'validation',
       message: 'The application environment is invalid.',
+      validationPhase: 'environment',
+      issueCodes: result.error.issues.map((issue) => issue.code),
       details: result.error.issues,
       cause: result.error,
     })
@@ -49,6 +52,12 @@ export function parseEnvironment(source: EnvironmentSource): PublicEnvironment {
     IS_DEVELOPMENT: isDevelopment,
   }
 }
+
+// Configure safe diagnostics before validation can throw during module loading.
+// This is still the only module that reads Vite's environment values.
+errorReporting.configure({
+  development: import.meta.env.DEV && !import.meta.env.PROD,
+})
 
 export const env = parseEnvironment({
   VITE_API_URL: import.meta.env.VITE_API_URL,

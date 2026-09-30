@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Instruction } from '../model/instruction'
 import { instructionsUrl } from '@/mocks/instructions-handlers'
 import { server } from '@/mocks/server'
-import { act, renderHook } from '@/test/render'
+import { act, renderHook, waitFor } from '@/test/render'
 import {
   archiveInstruction,
   useArchiveInstruction,
@@ -20,6 +20,34 @@ const instruction: Instruction = {
 }
 
 describe('archiveInstruction', () => {
+  it('does not turn a committed archive into a write failure when follow-up work throws', async () => {
+    server.use(
+      http.patch(`${instructionsUrl}/*`, () =>
+        HttpResponse.json({ ...instruction, archived: true }),
+      ),
+    )
+    const onFollowUpError = vi.fn()
+    const { queryClient, result } = renderHook(() =>
+      useArchiveInstruction({
+        onFollowUpError,
+        mutationConfig: {
+          onSuccess: () => {
+            throw new Error('callback')
+          },
+        },
+      }),
+    )
+    vi.spyOn(queryClient, 'invalidateQueries').mockRejectedValue(
+      new Error('refresh'),
+    )
+    await expect(
+      act(() => result.current.mutateAsync({ id: instruction.id })),
+    ).resolves.toMatchObject({ archived: true })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(onFollowUpError).toHaveBeenCalledWith('refresh')
+    expect(onFollowUpError).toHaveBeenCalledWith('callback')
+  })
+
   it('PATCHes the encoded id with exactly archived true and validates responses', async () => {
     await expect(archiveInstruction({ id: ' ' })).rejects.toMatchObject({
       kind: 'validation',
@@ -65,9 +93,10 @@ describe('archiveInstruction', () => {
 
     await act(() => result.current.mutateAsync({ id: instruction.id }))
 
-    expect(invalidate).toHaveBeenCalledWith({
-      queryKey: instructionKeys.lists(),
-    })
+    expect(invalidate).toHaveBeenCalledWith(
+      { queryKey: instructionKeys.lists() },
+      { throwOnError: true },
+    )
     expect(onSuccess).toHaveBeenCalledOnce()
   })
 })

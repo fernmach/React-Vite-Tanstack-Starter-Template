@@ -135,6 +135,12 @@ describe('API generation plans', () => {
     expect(operation).toContain("from '@/lib/api-client'")
     expect(operation).toContain('z.object({}).strict()')
     expect(operation).toContain('queryOptions({')
+    expect(operation).toContain(
+      'queryFn: ({ signal }) => requestGetProducts(normalized, signal)',
+    )
+    expect(operation).toContain('    signal,')
+    expect(operation).toContain("validationPhase: 'request'")
+    expect(operation).toContain('requestContractErrors: []')
     expect(operation).toContain('placeholderData: keepPreviousData')
     expect(operation).toContain("all: ['products'] as const")
     expect(operation).toContain('list: (input: NormalizedGetProductsInput)')
@@ -142,8 +148,8 @@ describe('API generation plans', () => {
       operation.indexOf('...options'),
     )
     expect(operation).not.toContain(';\n')
-    expect(operation.match(/API_GENERATOR_TODO/g)).toHaveLength(4)
-    expect(first.files[1].content.match(/API_GENERATOR_TODO/g)).toHaveLength(4)
+    expect(operation.match(/API_GENERATOR_TODO/g)).toHaveLength(6)
+    expect(first.files[1].content.match(/API_GENERATOR_TODO/g)).toHaveLength(6)
   })
 
   it('renders mutation schemas, fetcher, non-overridable invalidation, callbacks, and sentinels', async () => {
@@ -164,14 +170,18 @@ describe('API generation plans', () => {
     expect(operation.indexOf('...restConfig')).toBeLessThan(
       operation.indexOf('mutationFn: createProduct'),
     )
+    expect(operation).toContain('Promise.allSettled([')
+    expect(operation).toContain('queryClient.invalidateQueries(')
+    expect(operation).toContain('{ throwOnError: true }')
+    expect(operation).toContain('errorReporting.report(outcome.reason')
     expect(operation).toContain(
-      'queryClient.invalidateQueries({ queryKey: productsKeys.all })',
+      "notifyFollowUpError(index === 0 ? 'refresh' : 'callback')",
     )
     expect(operation).toContain(
-      'await onSuccess?.(data, variables, context, mutationContext)',
+      'onSuccess?.(data, variables, context, mutationContext)',
     )
-    expect(operation.match(/API_GENERATOR_TODO/g)).toHaveLength(4)
-    expect(plan.files[1].content.match(/API_GENERATOR_TODO/g)).toHaveLength(3)
+    expect(operation.match(/API_GENERATOR_TODO/g)).toHaveLength(7)
+    expect(plan.files[1].content.match(/API_GENERATOR_TODO/g)).toHaveLength(5)
   })
 
   it('fails when the feature does not exist', async () => {

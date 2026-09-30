@@ -10,10 +10,10 @@ specific so implementations and reviews have one unambiguous contract.
 > **Migration status:** complete. The shared environment, Axios/Zod client,
 > error model, TanStack Query provider, test infrastructure, MSW development/test
 > backend, Instructions request declarations, migrated UI, deterministic API
-> generator, and architecture enforcement are release-ready. Enforcement runs
+> generator, and architecture enforcement are implemented. Enforcement runs
 > through ESLint, `bun run check:api`, pre-commit validation, and CI.
-> Examples in this guide are normative target examples, not descriptions of
-> the current source tree.
+> The complementary [error-handling standard](error-handling.md) defines
+> classification, feedback, reporting, cancellation, and recovery ownership.
 
 ## Reading the rules
 
@@ -125,8 +125,8 @@ export type InstructionPage = z.infer<typeof instructionPageSchema>
 
 ## Instructions mock contract
 
-MSW becomes the authoritative development and test backend in Task 3. Its
-contract is exactly:
+MSW is the authoritative development and test backend. Its Instructions
+contract is:
 
 - `GET /instructions?term&page&pageSize` returns `InstructionPage` directly.
   There is no `data` or `meta` envelope.
@@ -159,222 +159,18 @@ export const instructionKeys = {
 }
 ```
 
-## Target query example
+## Query and mutation examples
 
-The following is the complete target shape for
-`src/features/instructions/api/get-instructions.ts`. Its imports from
-`@/lib/api-client`, `@/lib/react-query`, and the Zod-backed model are
-forward-looking; those modules are created in later tasks.
-
-```ts
-import { keepPreviousData, queryOptions, useQuery } from '@tanstack/react-query'
-import { z } from 'zod'
-import { apiClient } from '@/lib/api-client'
-import type { QueryConfig } from '@/lib/react-query'
-import { instructionPageSchema } from '../model/instruction'
-import { instructionKeys } from './instruction-keys'
-
-export const getInstructionsInputSchema = z.object({
-  term: z.string().trim().max(200).default(''),
-  page: z.coerce.number().int().positive().default(1),
-  pageSize: z.coerce.number().int().positive().default(20),
-})
-
-export type GetInstructionsInput = z.input<typeof getInstructionsInputSchema>
-export type NormalizedInstructionQuery = z.output<
-  typeof getInstructionsInputSchema
->
-
-export function normalizeInstructionsInput(
-  input: GetInstructionsInput = {},
-): NormalizedInstructionQuery {
-  return getInstructionsInputSchema.parse(input)
-}
-
-export async function getInstructions(input: GetInstructionsInput = {}) {
-  const params = normalizeInstructionsInput(input)
-  return apiClient.get('/instructions', {
-    params,
-    responseSchema: instructionPageSchema,
-  })
-}
-
-export function getInstructionsQueryOptions(input: GetInstructionsInput = {}) {
-  const normalized = normalizeInstructionsInput(input)
-  return queryOptions({
-    queryKey: instructionKeys.list(normalized),
-    queryFn: () => getInstructions(normalized),
-    placeholderData: keepPreviousData,
-  })
-}
-
-type UseInstructionsOptions = {
-  input?: GetInstructionsInput
-  queryConfig?: QueryConfig<typeof getInstructionsQueryOptions>
-}
-
-export function useInstructions({
-  input = {},
-  queryConfig,
-}: UseInstructionsOptions = {}) {
-  return useQuery({
-    ...getInstructionsQueryOptions(input),
-    ...queryConfig,
-  })
-}
-```
-
-Normalization occurs once before the key and request are built, so values such
-as omitted and whitespace-only terms cannot create distinct cache entries for
-the same request.
-
-## Target mutation examples
-
-### Optimistic active-state update
-
-The complete target shape below updates every cached Instruction list,
-snapshots it for rollback, and always invalidates lists after settlement. The
-target `apiClient.patch` accepts `unknown` from Axios and returns only the value
-parsed by `responseSchema`.
-
-```ts
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { z } from 'zod'
-import { apiClient } from '@/lib/api-client'
-import type { MutationConfig } from '@/lib/react-query'
-import {
-  instructionPageSchema,
-  instructionSchema,
-  type InstructionPage,
-} from '../model/instruction'
-import { instructionKeys } from './instruction-keys'
-
-export const setInstructionActiveInputSchema = z.object({
-  id: z.string().min(1),
-  active: z.boolean(),
-})
-
-export type SetInstructionActiveInput = z.infer<
-  typeof setInstructionActiveInputSchema
->
-
-export async function setInstructionActive(input: SetInstructionActiveInput) {
-  const { id, active } = setInstructionActiveInputSchema.parse(input)
-  return apiClient.patch(`/instructions/${encodeURIComponent(id)}`, {
-    body: { active },
-    responseSchema: instructionSchema,
-  })
-}
-
-type Snapshot = Array<[readonly unknown[], InstructionPage | undefined]>
-
-type UseSetInstructionActiveOptions = {
-  mutationConfig?: MutationConfig<typeof setInstructionActive>
-}
-
-export function useSetInstructionActive({
-  mutationConfig,
-}: UseSetInstructionActiveOptions = {}) {
-  const queryClient = useQueryClient()
-  const { onMutate, onError, onSettled, ...restConfig } = mutationConfig ?? {}
-
-  return useMutation({
-    mutationFn: setInstructionActive,
-    ...restConfig,
-    onMutate: async (input) => {
-      const parsed = setInstructionActiveInputSchema.parse(input)
-      await queryClient.cancelQueries({ queryKey: instructionKeys.lists() })
-      const snapshots: Snapshot = queryClient.getQueriesData({
-        queryKey: instructionKeys.lists(),
-      })
-
-      queryClient.setQueriesData(
-        { queryKey: instructionKeys.lists() },
-        (current: unknown) => {
-          const page = instructionPageSchema.safeParse(current)
-          if (!page.success) return current
-          return {
-            ...page.data,
-            items: page.data.items.map((instruction) =>
-              instruction.id === parsed.id
-                ? { ...instruction, active: parsed.active }
-                : instruction,
-            ),
-          }
-        },
-      )
-
-      const consumerContext = await onMutate?.(input)
-      return { snapshots, consumerContext }
-    },
-    onError: (error, input, context) => {
-      context?.snapshots.forEach(([key, page]) => {
-        queryClient.setQueryData(key, page)
-      })
-      onError?.(error, input, context?.consumerContext)
-    },
-    onSettled: async (data, error, input, context) => {
-      await queryClient.invalidateQueries({ queryKey: instructionKeys.lists() })
-      await onSettled?.(data, error, input, context?.consumerContext)
-    },
-  })
-}
-```
-
-An implementation may simplify the optional consumer callback composition if
-the shared `MutationConfig` type intentionally excludes lifecycle callbacks.
-It **MUST NOT** remove cancellation, snapshot rollback, and final invalidation.
-
-### Archive and invalidate
-
-Archive does not need an optimistic removal. It validates the returned
-Instruction and invalidates lists only after success.
-
-```ts
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { z } from 'zod'
-import { apiClient } from '@/lib/api-client'
-import type { MutationConfig } from '@/lib/react-query'
-import { instructionSchema } from '../model/instruction'
-import { instructionKeys } from './instruction-keys'
-
-export const archiveInstructionInputSchema = z.object({
-  id: z.string().min(1),
-  archived: z.literal(true).default(true),
-})
-
-export type ArchiveInstructionInput = z.input<
-  typeof archiveInstructionInputSchema
->
-
-export async function archiveInstruction(input: ArchiveInstructionInput) {
-  const { id } = archiveInstructionInputSchema.parse(input)
-  return apiClient.patch(`/instructions/${encodeURIComponent(id)}`, {
-    body: { archived: true },
-    responseSchema: instructionSchema,
-  })
-}
-
-type UseArchiveInstructionOptions = {
-  mutationConfig?: MutationConfig<typeof archiveInstruction>
-}
-
-export function useArchiveInstruction({
-  mutationConfig,
-}: UseArchiveInstructionOptions = {}) {
-  const queryClient = useQueryClient()
-  const { onSuccess, ...restConfig } = mutationConfig ?? {}
-
-  return useMutation({
-    mutationFn: archiveInstruction,
-    ...restConfig,
-    onSuccess: async (data, variables, context) => {
-      await queryClient.invalidateQueries({ queryKey: instructionKeys.lists() })
-      await onSuccess?.(data, variables, context)
-    },
-  })
-}
-```
+The implemented Instructions operations are the reference examples:
+`src/features/instructions/api/get-instructions.ts` forwards the Query abort
+signal to Axios, normalizes request input before key creation, and declares
+status-qualified request-contract metadata. `set-instruction-active.ts`
+performs optimistic updates with rollback and final invalidation;
+`archive-instruction.ts` invalidates after success. Both mutation hooks isolate
+follow-up refresh/callback failures so a confirmed write remains successful.
+Read the [error-handling standard](error-handling.md) for feedback, reporting,
+cancellation, and recovery ownership. New operations should begin with the
+generator and resolve its domain-specific TODOs.
 
 ## Shared errors
 
@@ -388,10 +184,11 @@ kinds:
   its Zod contract.
 - `unknown`: no safer classification applies.
 
-`ApiError` keeps safe user-facing metadata such as message, kind, status, and
-optional code. It must not couple the shared client to notifications, routing,
-translations, or feature UI. Feature hooks and components decide how errors are
-presented.
+`ApiError` retains diagnostic context, including backend messages, privately.
+Its message or code MUST NOT be displayed directly. Feature-owned safe copy and
+application effects follow the [error-handling standard](error-handling.md).
+The shared client must not depend on notifications, routing, translations, or
+feature UI.
 
 ## Public environment
 
@@ -433,6 +230,12 @@ available. The browser worker starts only in development and only when
 Node MSW server globally, reject unhandled requests, and reset all state after
 each test.
 
+The production build enforces that boundary: it fails if an emitted chunk
+contains a module from `src/mocks` or `msw`, and it removes the development-only
+worker that Vite copies from `public/`. Keep the Vite-defined
+`__APP_DEVELOPMENT__` guard at the dynamic-import site so Rollup can eliminate
+the mock graph without adding environment reads outside `src/config/env.ts`.
+
 Unit tests may mock a pure, non-HTTP collaborator when useful. They **SHOULD**
 exercise API declarations through MSW so validation, serialization, error
 normalization, and cache behavior are verified together.
@@ -468,22 +271,26 @@ src/features/<feature>/api/<name>.ts
 src/features/<feature>/api/<name>.test.tsx
 ```
 
-Query output contains strict request and response schemas with inferred types,
-input normalization, a resource key hierarchy containing the normalized input,
-a standalone shared-client fetcher, `queryOptions`, `keepPreviousData`, and a
-hook whose shared `QueryConfig` cannot replace the canonical key or fetcher.
-Mutation output contains strict schemas, a standalone shared-client fetcher,
-and a hook whose canonical resource invalidation cannot be replaced by
-consumer `MutationConfig`; supported consumer callbacks are composed after the
-canonical cache effect. These are safe starting shapes, not endpoint designs.
+Query output contains strict request/response schemas with inferred types,
+request-validation context, normalized keys, a shared-client fetcher that
+forwards the Query abort signal, `queryOptions`, and a hook whose shared
+`QueryConfig` cannot replace the canonical key or fetcher. It includes
+status-qualified request-contract metadata and a placeholder-data decision.
+Mutation output contains strict schemas, request-validation context, a
+shared-client fetcher, and a hook with conservative invalidation. Follow-up
+refresh and consumer callback failures are reported separately from a
+confirmed write. Both kinds require domain-specific ownership and test choices
+before use; the scaffolds do not select UI copy or automatic retries.
 
 Any domain-specific decision the generator cannot make is marked
 `API_GENERATOR_TODO`. This includes concrete schema fields, the final method and
 endpoint, serialization, precise cache effects or rollback, pagination
-semantics, and MSW assertions. Generated work is incomplete and **MUST NOT be
-committed while any `API_GENERATOR_TODO` sentinel remains**. Replace every
+semantics, request origin, status-qualified backend codes, feedback ownership,
+safe failures, cancellation, and MSW assertions. Generated work is incomplete
+and **MUST NOT be committed while any `API_GENERATOR_TODO` sentinel remains**. Replace every
 sentinel with the domain decision, implement the colocated MSW tests, and run
-`bun run verify`. Task 7 makes the sentinel condition blocking.
+`bun run verify`. `bun run check:api` blocks unresolved sentinels in operation
+and test files.
 
 Append `--dry-run` to validate the invocation and inspect deterministic target
 paths and fully formatted output without creating the `api` directory or any
@@ -500,7 +307,7 @@ under `tools/generators/api`; its parsing, planning, rendering, and writing
 functions are importable for focused tests, while `cli.ts` only handles process
 input, output, and exit status.
 
-Using the generator is **REQUIRED** for a new operation after Task 6 unless the
+Using the generator is **REQUIRED** for a new operation unless the
 generator cannot represent it. In that case, follow the same file anatomy
 manually and record why generation was skipped. Editing generated scaffolds to
 complete schemas, paths, cache rules, and tests is always required.
@@ -538,9 +345,10 @@ The approved program is sequential:
 8. **Final documentation, audit, and release readiness** — completed; public
    docs match the implementation and production-safe mocking is verified.
 
-`bun run check:api` uses the TypeScript parser to verify
-operation schemas, fetchers, matching query/mutation hooks, shared-client use,
-UI-facing hook/type imports, the generator sentinel, and Query provider
+`bun run check:api` uses the TypeScript parser to verify operation schemas,
+fetchers, matching query/mutation hooks, shared-client use, explicit response
+schemas, absence of notification imports in API modules, UI-facing hook/type
+imports, generator sentinels in source and tests, and Query provider
 installation. ESLint separately blocks Axios outside the shared client, direct
 `fetch`, UI imports of `apiClient`, and direct environment reads outside
 `src/config/env.ts`. Both layers run in the local verification gate, lefthook,

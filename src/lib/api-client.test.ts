@@ -1,6 +1,13 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import { apiClient } from './api-client'
+import { isApiCancellation } from './api-error'
+import {
+  resetAuthenticationRequiredEpisode,
+  subscribeAuthenticationRequired,
+} from './api-events'
+
+afterEach(() => resetAuthenticationRequiredEpisode())
 
 type Adapter = Extract<
   NonNullable<Parameters<typeof apiClient.get>[1]['adapter']>,
@@ -55,7 +62,11 @@ describe('apiClient', () => {
         responseSchema: z.object({ id: z.string() }),
         adapter: async (config) => response({ id: 123 }, config),
       }),
-    ).rejects.toMatchObject({ kind: 'validation' })
+    ).rejects.toMatchObject({
+      kind: 'validation',
+      validationPhase: 'response',
+      issueCodes: ['invalid_type'],
+    })
   })
 
   it('sends JSON bodies and normalizes HTTP failures', async () => {
@@ -82,6 +93,8 @@ describe('apiClient', () => {
       kind: 'http',
       status: 422,
       code: 'REJECTED',
+      codeSource: 'backend',
+      transportCode: 'ERR_BAD_REQUEST',
     })
     expect(JSON.parse(receivedData ?? '')).toEqual({ active: false })
   })
@@ -91,12 +104,98 @@ describe('apiClient', () => {
       apiClient.get('/instructions', {
         responseSchema: z.unknown(),
         adapter: async (config) => {
-          throw { isAxiosError: true, code: 'ERR_NETWORK', config }
+          throw {
+            isAxiosError: true,
+            code: 'ERR_NETWORK',
+            message: 'private transport detail',
+            config,
+          }
         },
       }),
     ).rejects.toMatchObject({
       kind: 'network',
       message: 'Unable to reach the server. Please try again.',
     })
+  })
+
+  it('publishes one authentication episode for concurrent 401s, including a malformed body', async () => {
+    const listener = vi.fn()
+    const unsubscribe = subscribeAuthenticationRequired(listener)
+    const schema = z.unknown()
+    const makeRequest = (data: unknown) =>
+      apiClient.get('/private', {
+        responseSchema: schema,
+        adapter: async (config) => {
+          throw {
+            isAxiosError: true,
+            code: 'ERR_BAD_REQUEST',
+            message: 'private raw error',
+            response: response(data, config, 401),
+          }
+        },
+      })
+
+    const failures = await Promise.allSettled([
+      makeRequest({ message: 42 }),
+      makeRequest({ message: 'No access.' }),
+    ])
+    expect(failures[0]).toMatchObject({
+      status: 'rejected',
+      reason: {
+        kind: 'validation',
+        validationPhase: 'error-payload',
+        status: 401,
+        code: undefined,
+      },
+    })
+    expect(failures[1]).toMatchObject({
+      status: 'rejected',
+      reason: { kind: 'http', status: 401 },
+    })
+    expect(listener).toHaveBeenCalledTimes(1)
+
+    resetAuthenticationRequiredEpisode()
+    await expect(makeRequest(undefined)).rejects.toMatchObject({
+      kind: 'http',
+      status: 401,
+    })
+    expect(listener).toHaveBeenCalledTimes(2)
+    unsubscribe()
+  })
+
+  it('does not publish for 403 or cancellation, preserving Axios cancellation', async () => {
+    const listener = vi.fn()
+    const unsubscribe = subscribeAuthenticationRequired(listener)
+    const controller = new AbortController()
+
+    await expect(
+      apiClient.get('/private', {
+        responseSchema: z.unknown(),
+        adapter: async (config) => {
+          throw {
+            isAxiosError: true,
+            response: response({ message: 'Forbidden.' }, config, 403),
+          }
+        },
+      }),
+    ).rejects.toMatchObject({ kind: 'http', status: 403 })
+
+    controller.abort()
+    let cancellation: unknown
+    try {
+      await apiClient.get('/private', {
+        responseSchema: z.unknown(),
+        signal: controller.signal,
+        adapter: async () => {
+          throw new Error('adapter should not run for a pre-aborted signal')
+        },
+      })
+    } catch (error) {
+      cancellation = error
+    }
+    expect(isApiCancellation(cancellation)).toBe(true)
+    expect(cancellation).toMatchObject({ code: 'ERR_CANCELED' })
+    expect(listener).not.toHaveBeenCalled()
+    unsubscribe()
   })
 })
