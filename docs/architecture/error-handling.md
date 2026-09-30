@@ -32,7 +32,8 @@ error-reporting vendor. This document does not select any of those integrations.
   validate inputs, and the Instructions query forwards TanStack Query's signal.
   `src/lib/api-events.ts` coalesces concurrent 401 events until an application
   handler explicitly resets the episode. `ApiErrorEffects` now owns the visible
-  notice under the router, using `NotificationProvider` and `useNotifications`.
+  notice under the router, using the Sonner-backed `NotificationProvider` and
+  `useNotifications`.
 - `src/lib/react-query.ts` disables query and mutation retries and window-focus
   refetching. `QueryCache` and `MutationCache` report unexpected failures once
   per failed execution; neither adds query toasts nor blanket `throwOnError`.
@@ -159,9 +160,10 @@ handler with its established session policy later.
 
 The implemented handler is `ApiErrorEffects`, mounted by the root route below
 `RouterProvider`. It subscribes to the shared event channel, which replays an
-active episode to late subscribers. `NotificationProvider` supplies a visible
-notification surface and the shared `useNotifications` API. Callers provide a
-stable notice ID; duplicate IDs do not create duplicate notices. The optional
+active episode to late subscribers. `NotificationProvider` adapts the shared
+`useNotifications` API to the application-level Sonner toaster. Callers provide
+a stable notice ID; duplicate IDs do not create duplicate notices. Authentication
+notices remain visible until explicit dismissal or confirmed recovery. The optional
 `onAuthenticationRequired(event, completeRecovery)` callback is the host policy
 extension point. `completeRecovery` dismisses the notice and resets only its
 matching episode. The notice's dismiss button performs the same reset. Neither
@@ -338,22 +340,22 @@ The table describes implemented extension points. A shared message module and
 mutation feedback metadata remain possible later extensions; Instructions owns
 its local feedback and safe code mapping.
 
-| Location                                                                             | Responsibility / extension point                                                             |
-| ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
-| `src/lib/api-error.ts`                                                               | Error model, pure normalization, cancellation recognition, validation context.               |
-| `src/lib/api-client.ts`                                                              | Axios transport and response/error-payload validation; no presentation effects.              |
-| `src/lib/api-events.ts`                                                              | Authentication-required event channel and explicit episode reset; no application policy.     |
-| `src/lib/react-query.ts`                                                             | Query defaults, cache-level reporting, and request-contract metadata.                        |
-| `src/lib/error-reporting.ts`                                                         | Vendor-neutral reporting contract, sanitization, occurrence deduplication.                   |
-| `src/components/errors/`                                                             | Domain-neutral visible feedback and boundary fallback components.                            |
-| `src/app/provider.tsx`                                                               | Wrap provider creation in the application boundary; compose Query and notifications.         |
-| `src/lib/notifications.ts` and `src/components/notifications/`                       | Shared notification controls and accessible visible surface.                                 |
-| `src/app/`                                                                           | Application-owned authentication-event coordination and reporter configuration.              |
-| `src/main.tsx`, `src/bootstrap.ts`, `src/app/start.tsx`, and `src/routes/__root.tsx` | Guarded startup import, DOM fallback, React mounting, and thin router fallback wiring.       |
-| `src/features/instructions/api/`                                                     | Request context, supported cancellation, hook feedback ownership, existing cache guarantees. |
-| `src/features/instructions/model/`                                                   | Feature-owned backend-code mapping and operation recovery policy.                            |
-| `src/features/instructions/components/` and `pages/`                                 | Inline query, control, and dialog feedback through hooks.                                    |
-| Colocated tests and `src/mocks/`                                                     | Policy tests and deterministic MSW failures; shared test helpers stay in `src/test`.         |
+| Location                                                                                        | Responsibility / extension point                                                             |
+| ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `src/lib/api-error.ts`                                                                          | Error model, pure normalization, cancellation recognition, validation context.               |
+| `src/lib/api-client.ts`                                                                         | Axios transport and response/error-payload validation; no presentation effects.              |
+| `src/lib/api-events.ts`                                                                         | Authentication-required event channel and explicit episode reset; no application policy.     |
+| `src/lib/react-query.ts`                                                                        | Query defaults, cache-level reporting, and request-contract metadata.                        |
+| `src/lib/error-reporting.ts`                                                                    | Vendor-neutral reporting contract, sanitization, occurrence deduplication.                   |
+| `src/components/errors/`                                                                        | Domain-neutral visible feedback and boundary fallback components.                            |
+| `src/app/provider.tsx`                                                                          | Wrap provider creation in the application boundary; compose Query and notifications.         |
+| `src/lib/notifications.ts`, `src/components/notifications/`, and `src/components/ui/sonner.tsx` | Shared notification controls and Sonner-backed accessible visible surface.                   |
+| `src/app/`                                                                                      | Application-owned authentication-event coordination and reporter configuration.              |
+| `src/main.tsx`, `src/bootstrap.ts`, `src/app/start.tsx`, and `src/routes/__root.tsx`            | Guarded startup import, DOM fallback, React mounting, and thin router fallback wiring.       |
+| `src/features/instructions/api/`                                                                | Request context, supported cancellation, hook feedback ownership, existing cache guarantees. |
+| `src/features/instructions/model/`                                                              | Feature-owned backend-code mapping and operation recovery policy.                            |
+| `src/features/instructions/components/` and `pages/`                                            | Inline query, control, and dialog feedback through hooks.                                    |
+| Colocated tests and `src/mocks/`                                                                | Policy tests and deterministic MSW failures; shared test helpers stay in `src/test`.         |
 
 Shared layers MUST NOT import features, app, or routes. App composition injects
 application behavior into shared collaborators; feature-specific mappings stay

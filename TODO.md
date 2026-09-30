@@ -3,7 +3,7 @@
 ## Error handling implementation — baseline complete
 
 - [x] Separate transport normalization from successful-response validation, carry validation phase and occurrence identity, and forward Instructions query cancellation.
-- [x] Compose accessible notifications and application authentication-required effects with episode reset.
+- [x] Compose Sonner-backed accessible notifications and application authentication-required effects with episode reset.
 - [x] Add sanitized vendor-neutral reporting, cache execution ownership, and reporter-failure isolation.
 - [x] Prove application, route, section, and startup containment with explicit recovery.
 - [x] Complete Instructions local mutation feedback, safe code mapping, placeholder isolation, and background query recovery (Task 5).
