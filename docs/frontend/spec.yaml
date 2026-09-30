@@ -1,0 +1,575 @@
+schema_version: 2
+generator:
+  skill: frontend-spec
+  workflow_version: 0.1.0-dev
+  generated_at: '2026-09-11T13:29:19Z'
+application:
+  name: Instruções de Montagem de MPV
+  purpose: Permitir consulta pública de instruções e reservar ações de manutenção a usuários autenticados com permissão.
+  scope:
+    - Exibir uma listagem paginada de instruções de montagem de MPV.
+    - Pesquisar instruções por um termo livre e limpar a pesquisa atual.
+    - Iniciar os fluxos de criação e edição de uma instrução.
+    - Alterar o estado ativo de uma instrução e solicitar sua exclusão.
+    - Distinguir visitantes, editores e administradores nas ações de manutenção.
+  out_of_scope:
+    - Especificar os campos e o layout das telas de criação e edição, que não aparecem na evidência fornecida.
+    - Implementar o backend real de autenticação, persistência, cookies ou autorização.
+    - Reproduzir literalmente tecnologia, URLs legadas ou bibliotecas apenas sugeridas pela captura.
+  assumptions:
+    - A aba Instruções representa o item ativo da navegação principal.
+    - O campo de pesquisa aceita um termo livre aplicado ao código e à descrição da instrução após o envio do formulário.
+    - Os ícones de lápis e lixeira representam respectivamente edição e exclusão da linha.
+    - O controle na coluna Ativo salva imediatamente, anuncia o resultado e restaura o valor anterior em caso de falha.
+    - A exclusão exige confirmação explícita e arquiva o registro para permitir recuperação administrativa.
+    - A rota canônica da listagem será /instrucoes até que a rota real seja confirmada.
+    - A interface e seus anúncios acessíveis usam português do Brasil.
+    - A consulta permanece pública; ações de manutenção dependem das permissões validadas da sessão.
+  open_questions: []
+  conflicts: []
+  recommended_decisions: []
+  authentication_required: true
+approval:
+  status: approved
+  approved_at: '2026-09-30T00:00:00Z'
+personas:
+  - id: public-instructions-user-persona
+    name: Visitante da área de instruções
+    goals:
+      - Encontrar rapidamente uma instrução por código ou descrição.
+    role_ids:
+      - public-instructions-user-role
+  - id: instructions-editor-persona
+    name: Editor de instruções
+    goals:
+      - Criar, editar e alterar o estado ativo de instruções com segurança.
+    role_ids:
+      - instructions-editor-role
+  - id: instructions-admin-persona
+    name: Administrador de instruções
+    goals:
+      - Executar todas as ações editoriais e arquivar instruções.
+    role_ids:
+      - instructions-admin-role
+roles:
+  - id: public-instructions-user-role
+    name: Usuário público
+    permissions:
+      - Visualizar e pesquisar instruções de montagem de MPV sem autenticação.
+  - id: instructions-editor-role
+    name: Editor
+    permissions:
+      - Visualizar e pesquisar instruções.
+      - Criar e editar instruções.
+      - Alterar o estado ativo de instruções.
+  - id: instructions-admin-role
+    name: Administrador
+    permissions:
+      - Executar todas as permissões de editor.
+      - Solicitar e confirmar o arquivamento reversível de instruções.
+navigation:
+  - id: primary-instructions-navigation
+    name: Navegação principal
+    items:
+      - id: instructions-navigation-item
+        label: Instruções
+        page_id: instructions-list-page
+        role_ids:
+          - public-instructions-user-role
+          - instructions-editor-role
+          - instructions-admin-role
+layouts:
+  - id: public-instructions-layout
+    name: Área pública de instruções
+    component_ids:
+      - application-shell-component
+      - utility-header-component
+      - primary-navigation-component
+pages:
+  - id: instructions-list-page
+    name: Instruções de Montagem de MPV
+    route: /instrucoes
+    purpose: Oferecer busca, paginação e ações de manutenção sobre instruções de montagem de MPV.
+    parent_page_id: null
+    layout_id: public-instructions-layout
+    role_ids:
+      - public-instructions-user-role
+      - instructions-editor-role
+      - instructions-admin-role
+    sections:
+      - id: instructions-page-heading-section
+        purpose: Identificar a página e oferecer o início da criação de uma nova instrução.
+        component_ids:
+          - instructions-page-heading-component
+          - new-instruction-action-component
+      - id: instructions-search-section
+        purpose: Permitir que o usuário pesquise ou limpe o termo atual.
+        component_ids:
+          - instructions-search-toolbar-component
+      - id: instructions-results-section
+        purpose: Apresentar instruções, estado, ações por linha, contagem e paginação.
+        component_ids:
+          - instructions-table-component
+          - instructions-pagination-component
+          - delete-confirmation-component
+    states:
+      - loading
+      - empty
+      - ready
+      - validation-error
+      - runtime-error
+      - offline
+components:
+  - id: application-shell-component
+    name: Estrutura geral da aplicação
+    type: layout
+    responsibility: Organizar cabeçalho utilitário, navegação, conteúdo principal e faixa inferior visual.
+    variants:
+      - public
+    composes:
+      - utility-header-component
+      - primary-navigation-component
+    reuse: Compartilhada por páginas públicas deste produto.
+    source: application
+    availability: not-applicable
+    registry_item: null
+    installation_required: false
+    verification:
+      method: none
+      verified_at: null
+      documentation_url: null
+  - id: utility-header-component
+    name: Cabeçalho utilitário
+    type: application
+    responsibility: Exibir marca, nome do produto e selo de ambiente.
+    variants:
+      - public
+      - environment-badge
+    composes: []
+    reuse: Compartilhado por páginas públicas.
+    source: application
+    availability: not-applicable
+    registry_item: null
+    installation_required: false
+    verification:
+      method: none
+      verified_at: null
+      documentation_url: null
+  - id: primary-navigation-component
+    name: Navegação principal de instruções
+    type: application
+    responsibility: Comunicar a área atual e permitir acesso à listagem de instruções.
+    variants:
+      - active-item
+    composes: []
+    reuse: Compartilhada pelas páginas da área de instruções.
+    source: application
+    availability: not-applicable
+    registry_item: null
+    installation_required: false
+    verification:
+      method: none
+      verified_at: null
+      documentation_url: null
+  - id: instructions-page-heading-component
+    name: Cabeçalho da listagem
+    type: application
+    responsibility: Exibir o título Instruções de Montagem de MPV e alinhar a ação Nova Instrução à direita.
+    variants:
+      - desktop
+      - stacked-mobile
+    composes:
+      - new-instruction-action-component
+    reuse: Exclusivo da listagem de instruções.
+    source: application
+    availability: not-applicable
+    registry_item: null
+    installation_required: false
+    verification:
+      method: none
+      verified_at: null
+      documentation_url: null
+  - id: new-instruction-action-component
+    name: Ação Nova Instrução
+    type: application
+    responsibility: Iniciar a criação de uma instrução com ícone de adição e rótulo textual.
+    variants:
+      - text-link
+      - compact-button
+    composes:
+      - button-primitive
+    reuse: Exclusiva do cabeçalho da listagem.
+    source: application
+    availability: not-applicable
+    registry_item: null
+    installation_required: false
+    verification:
+      method: none
+      verified_at: null
+      documentation_url: null
+  - id: instructions-search-toolbar-component
+    name: Barra de pesquisa de instruções
+    type: feature
+    responsibility: Capturar um termo livre, iniciar a pesquisa e limpar o filtro atual.
+    variants:
+      - default
+      - submitting
+      - validation-error
+    composes:
+      - input-primitive
+      - button-primitive
+    reuse: Padrão candidato para outras listagens administrativas.
+    source: application
+    availability: not-applicable
+    registry_item: null
+    installation_required: false
+    verification:
+      method: none
+      verified_at: null
+      documentation_url: null
+  - id: instructions-table-component
+    name: Tabela de instruções
+    type: feature
+    responsibility: Exibir código, descrição, URL, estado ativo e ações de edição e exclusão por registro.
+    variants:
+      - loading
+      - empty
+      - ready
+      - action-pending
+      - action-error
+    composes:
+      - table-primitive
+      - switch-primitive
+      - button-primitive
+    reuse: Exclusiva da listagem de instruções, com padrão reutilizável para tabelas administrativas.
+    source: application
+    availability: not-applicable
+    registry_item: null
+    installation_required: false
+    verification:
+      method: none
+      verified_at: null
+      documentation_url: null
+  - id: instructions-pagination-component
+    name: Paginação da listagem
+    type: feature
+    responsibility: Exibir intervalo e total de registros, página atual, páginas adjacentes e controles anterior e próximo.
+    variants:
+      - first-page
+      - middle-page
+      - last-page
+      - single-page
+    composes:
+      - pagination-primitive
+    reuse: Padrão candidato para outras listagens administrativas.
+    source: application
+    availability: not-applicable
+    registry_item: null
+    installation_required: false
+    verification:
+      method: none
+      verified_at: null
+      documentation_url: null
+  - id: delete-confirmation-component
+    name: Confirmação de exclusão
+    type: feature
+    responsibility: Explicar o impacto da exclusão, identificar a instrução e exigir confirmação ou cancelamento.
+    variants:
+      - closed
+      - open
+      - submitting
+      - runtime-error
+    composes:
+      - alert-dialog-primitive
+      - button-primitive
+    reuse: Padrão para ações destrutivas administrativas.
+    source: application
+    availability: not-applicable
+    registry_item: null
+    installation_required: false
+    verification:
+      method: none
+      verified_at: null
+      documentation_url: null
+  - id: button-primitive
+    name: Botão
+    type: shadcn-primitive
+    responsibility: Sustentar ações textuais, de ícone e de confirmação com foco e estados consistentes.
+    variants:
+      - primary
+      - secondary
+      - ghost
+      - icon
+      - destructive
+    composes: []
+    reuse: Compartilhado por ações da página.
+    source: shadcn
+    availability: installed
+    registry_item: '@shadcn/button'
+    installation_required: false
+    verification:
+      method: setup-manifest
+      verified_at: '2026-09-11T13:15:45.014Z'
+      documentation_url: https://ui.shadcn.com/docs/components/base/button
+  - id: input-primitive
+    name: Campo de texto
+    type: shadcn-primitive
+    responsibility: Receber o termo de pesquisa com nome acessível e estado de foco visível.
+    variants:
+      - search
+      - disabled
+      - invalid
+    composes: []
+    reuse: Compartilhado por formulários de filtro.
+    source: shadcn
+    availability: installed
+    registry_item: '@shadcn/input'
+    installation_required: false
+    verification:
+      method: setup-manifest
+      verified_at: '2026-09-11T13:15:45.014Z'
+      documentation_url: https://ui.shadcn.com/docs/components/base/input
+  - id: table-primitive
+    name: Tabela
+    type: shadcn-primitive
+    responsibility: Fornecer estrutura semântica para cabeçalho, corpo, linhas e células da listagem.
+    variants:
+      - striped
+      - compact
+    composes: []
+    reuse: Compartilhada por listagens tabulares.
+    source: shadcn
+    availability: official-available
+    registry_item: '@shadcn/table'
+    installation_required: true
+    verification:
+      method: official-registry-snapshot
+      verified_at: '2026-09-11T01:20:11Z'
+      documentation_url: https://ui.shadcn.com/docs/components/base/table
+  - id: switch-primitive
+    name: Alternador
+    type: shadcn-primitive
+    responsibility: Representar e alterar o estado ativo de cada instrução com nome e estado acessíveis.
+    variants:
+      - checked
+      - unchecked
+      - disabled
+      - pending
+    composes: []
+    reuse: Compartilhado por controles booleanos de estado.
+    source: shadcn
+    availability: official-available
+    registry_item: '@shadcn/switch'
+    installation_required: true
+    verification:
+      method: official-registry-snapshot
+      verified_at: '2026-09-11T01:20:11Z'
+      documentation_url: https://ui.shadcn.com/docs/components/base/switch
+  - id: pagination-primitive
+    name: Paginação
+    type: shadcn-primitive
+    responsibility: Fornecer links de página e navegação anterior e próxima com indicação programática da página atual.
+    variants:
+      - numbered
+      - with-ellipsis
+    composes: []
+    reuse: Compartilhada por listagens paginadas.
+    source: shadcn
+    availability: official-available
+    registry_item: '@shadcn/pagination'
+    installation_required: true
+    verification:
+      method: official-registry-snapshot
+      verified_at: '2026-09-11T01:20:11Z'
+      documentation_url: https://ui.shadcn.com/docs/components/base/pagination
+  - id: alert-dialog-primitive
+    name: Diálogo de alerta
+    type: shadcn-primitive
+    responsibility: Bloquear a continuidade até que uma ação destrutiva seja confirmada ou cancelada.
+    variants:
+      - destructive-confirmation
+    composes: []
+    reuse: Compartilhado por confirmações destrutivas.
+    source: shadcn
+    availability: official-available
+    registry_item: '@shadcn/alert-dialog'
+    installation_required: true
+    verification:
+      method: official-registry-snapshot
+      verified_at: '2026-09-11T01:20:11Z'
+      documentation_url: https://ui.shadcn.com/docs/components/base/alert-dialog
+flows:
+  - id: find-instruction-flow
+    name: Localizar uma instrução
+    persona_ids:
+      - public-instructions-user-persona
+    steps:
+      - id: open-instructions-list-step
+        page_id: instructions-list-page
+        action_id: null
+      - id: submit-instruction-search-step
+        page_id: instructions-list-page
+        action_id: search-instructions-action
+      - id: clear-instruction-search-step
+        page_id: instructions-list-page
+        action_id: clear-instructions-search-action
+  - id: maintain-instruction-flow
+    name: Iniciar manutenção de uma instrução
+    persona_ids:
+      - public-instructions-user-persona
+    steps:
+      - id: review-instructions-step
+        page_id: instructions-list-page
+        action_id: null
+      - id: choose-instruction-maintenance-step
+        page_id: instructions-list-page
+        action_id: edit-instruction-action
+  - id: change-instruction-state-flow
+    name: Alterar estado ativo da instrução
+    persona_ids:
+      - public-instructions-user-persona
+    steps:
+      - id: inspect-instruction-state-step
+        page_id: instructions-list-page
+        action_id: null
+      - id: toggle-instruction-state-step
+        page_id: instructions-list-page
+        action_id: toggle-instruction-active-action
+  - id: delete-instruction-flow
+    name: Excluir uma instrução
+    persona_ids:
+      - public-instructions-user-persona
+    steps:
+      - id: request-instruction-deletion-step
+        page_id: instructions-list-page
+        action_id: request-instruction-deletion-action
+      - id: confirm-instruction-deletion-step
+        page_id: instructions-list-page
+        action_id: confirm-instruction-deletion-action
+data_requirements:
+  - id: instruction-list-data
+    description: Código de MPV, descrição de MPV, URL pública ou compartilhável, estado ativo e identificador estável de cada instrução.
+    page_ids:
+      - instructions-list-page
+  - id: instruction-pagination-data
+    description: Página atual, tamanho de página, primeiro e último índice exibido, total de registros e disponibilidade de páginas anterior e próxima.
+    page_ids:
+      - instructions-list-page
+actions:
+  - id: search-instructions-action
+    name: Pesquisar instruções
+    page_id: instructions-list-page
+    result: Ao enviar o formulário, pesquisar o termo por código e descrição, retornar à primeira página e atualizar resultados, contagem e paginação.
+  - id: clear-instructions-search-action
+    name: Limpar pesquisa
+    page_id: instructions-list-page
+    result: Remover o termo, restaurar a listagem sem filtro e mover o foco de volta ao campo de pesquisa.
+  - id: change-instructions-page-action
+    name: Mudar página de resultados
+    page_id: instructions-list-page
+    result: Carregar a página solicitada mantendo o termo de pesquisa atual.
+  - id: create-instruction-action
+    name: Criar nova instrução
+    page_id: instructions-list-page
+    result: Navegar para o fluxo de criação cuja tela e contrato ainda precisam ser especificados.
+  - id: edit-instruction-action
+    name: Editar instrução
+    page_id: instructions-list-page
+    result: Navegar para o fluxo de edição da instrução selecionada, ainda não visível na evidência.
+  - id: toggle-instruction-active-action
+    name: Alterar estado ativo
+    page_id: instructions-list-page
+    result: Persistir o novo estado, anunciar o resultado e restaurar o valor anterior em caso de falha.
+  - id: request-instruction-deletion-action
+    name: Solicitar exclusão
+    page_id: instructions-list-page
+    result: Abrir confirmação identificando por código e descrição a instrução escolhida.
+  - id: confirm-instruction-deletion-action
+    name: Confirmar exclusão
+    page_id: instructions-list-page
+    result: Arquivar a instrução de forma reversível, atualizar a lista e anunciar o resultado.
+forms:
+  - id: instructions-search-form
+    page_id: instructions-list-page
+    submit_action_id: search-instructions-action
+    fields:
+      - id: instructions-search-query-field
+        label: Pesquisar instruções
+        type: search
+        required: false
+        validation:
+          - Remover espaços excedentes antes da pesquisa.
+          - Limitar o termo a 200 caracteres.
+external_services:
+  - id: instructions-service
+    name: Serviço de instruções de montagem de MPV
+    purpose: Fornecer pesquisa paginada e executar criação, edição, alteração de estado e exclusão.
+    contract_status: unknown
+  - id: authentication-service
+    name: Serviço de autenticação e autorização
+    purpose: Emitir cookies JWT seguros, validar CSRF e fornecer a sessão com funções e permissões.
+    contract_status: known
+experience:
+  responsive:
+    - Manter a composição de desktop observada em larguras amplas, com conteúdo quase integral e margens laterais consistentes.
+    - Empilhar título e ação Nova Instrução quando não houver largura suficiente para mantê-los na mesma linha.
+    - Empilhar campo e botões da pesquisa em telas estreitas sem alterar a ordem de foco.
+    - Abaixo de 768 px, substituir a tabela por cartões que preservem código, descrição, estado e ações; colocar a URL em detalhes expansíveis.
+    - Manter contagem e controles de paginação próximos aos resultados e permitir quebra controlada dos números de página.
+  accessibility:
+    - Atender WCAG 2.2 nível AA nos fluxos de busca, paginação e manutenção.
+    - Fornecer rótulo programático ao campo de pesquisa, mesmo que permaneça visualmente oculto para preservar a aparência observada.
+    - Dar nomes acessíveis específicos aos botões por linha, como Editar instrução 186681 e Excluir instrução 186681.
+    - Expor o estado do alternador com nome específico, como Ativar instrução 186681, e não depender apenas de azul ou cinza.
+    - Anunciar por região viva a quantidade de resultados após busca, limpeza, paginação, alteração de estado ou exclusão.
+    - Associar cabeçalhos às células e preservar leitura lógica da tabela.
+    - Manter contraste mínimo de 4.5:1 para texto comum e foco visível em todos os controles.
+    - Informar o ambiente Homologação como texto, não apenas como cor.
+  keyboard:
+    - 'Usar a ordem de foco visual: menu do usuário, navegação, Nova Instrução, pesquisa, Pesquisar, Limpar, controles das linhas e paginação.'
+    - Permitir envio da pesquisa com Enter e limpeza por botão alcançável por teclado.
+    - Tornar alternadores, edição, exclusão e paginação acionáveis com teclado sem exigir interação de ponteiro.
+    - Conter foco no diálogo de exclusão e devolver o foco ao botão de exclusão da linha ao cancelar.
+  content:
+    - 'Idioma observado: português do Brasil.'
+    - 'Título observado: Instruções de Montagem de MPV.'
+    - 'Rótulos observados: Instruções, Homologação, Nova Instrução, Pesquisar, Limpar, Ativo, Editar e Excluir.'
+    - 'Colunas observadas: Código de MPV, Descrição de MPV, URL, Ativo, Editar e Excluir.'
+    - Mostrar intervalo e total no padrão observado, por exemplo 21 a 40 de 192 registros.
+    - Preferir verbos diretos e mensagens de erro que expliquem recuperação sem expor detalhes técnicos.
+  visual_direction:
+    - Preservar a identidade predominantemente branca e azul, com azul médio na barra principal e azul escuro no item ativo.
+    - Usar hierarquia compacta de aplicação administrativa com título azul escuro, bordas cinza claras e controles de altura reduzida.
+    - Preservar alta densidade no desktop e linhas alternadas em branco e cinza muito claro para apoiar varredura horizontal.
+    - Alinhar código, descrição e URL à esquerda; centralizar alternador e ações nas respectivas colunas.
+    - Usar ícones simples de adição, edição, exclusão e setas acompanhados por texto ou nomes acessíveis.
+    - Não depender de cor para comunicar aba ativa, página atual, estado do alternador ou erros.
+references:
+  - id: instructions-list-screenshot
+    kind: screenshot
+    path: docs/frontend/references/instrucao-listagem.png
+    page_ids:
+      - instructions-list-page
+    component_ids:
+      - application-shell-component
+      - utility-header-component
+      - primary-navigation-component
+      - instructions-page-heading-component
+      - new-instruction-action-component
+      - instructions-search-toolbar-component
+      - instructions-table-component
+      - instructions-pagination-component
+extensions:
+  screenshot.evidence:
+    source_dimensions_px:
+      width: 2537
+      height: 1313
+    visible_environment: HOMOLOGAÇÃO
+    visible_user_text: Fernando Machad...
+    visible_page_range: 21 a 40 de 192 registros
+    visible_current_page: 2
+    visible_page_size: 20
+    observed_density: compact-desktop
+    observed_row_treatment: alternating-white-and-light-gray
+    observed_primary_color: medium-blue
+    evidence_boundary: The screenshot shows the list page only; create and edit destinations, confirmations, services, permissions, loading behavior, errors, and responsive states are not visible.

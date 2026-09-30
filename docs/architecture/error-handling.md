@@ -14,9 +14,11 @@ TanStack Query operations, and application/render failures. **MUST** and
 is the default unless review records a reason to differ. **MAY** and
 **OPTIONAL** identify enhancements beyond the required baseline.
 
-The baseline must work as a standalone template. It must not require an
-authentication service, a login route, a token-refresh endpoint, or an external
-error-reporting vendor. This document does not select any of those integrations.
+The baseline works without a live backend. Typed authentication operations and
+the deterministic MSW service follow
+[the authentication contract](authentication.md), while the AuthProvider,
+login route, and token-refresh orchestration remain later tasks. No external
+error-reporting vendor is required.
 
 ## Implemented baseline
 

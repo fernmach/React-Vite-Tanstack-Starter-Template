@@ -4,6 +4,18 @@ import { env } from '@/config/env'
 import { publishAuthenticationRequired } from './api-events'
 import { isApiCancellation, normalizeApiError } from './api-error'
 
+export type AuthenticationFailureMode = 'publish' | 'ignore'
+
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    authenticationFailure?: AuthenticationFailureMode
+  }
+
+  interface InternalAxiosRequestConfig {
+    authenticationFailure?: AuthenticationFailureMode
+  }
+}
+
 const axiosInstance = axios.create({
   baseURL: env.API_URL,
   withCredentials: true,
@@ -17,7 +29,10 @@ axiosInstance.interceptors.response.use(undefined, (error: unknown) => {
   if (isApiCancellation(error)) return Promise.reject(error)
 
   const normalized = normalizeApiError(error)
-  if (normalized.status === 401) {
+  const authenticationFailure = axios.isAxiosError(error)
+    ? error.config?.authenticationFailure
+    : undefined
+  if (normalized.status === 401 && authenticationFailure !== 'ignore') {
     publishAuthenticationRequired(normalized.occurrenceId)
   }
   return Promise.reject(normalized)

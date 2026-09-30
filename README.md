@@ -73,6 +73,20 @@ Then open **[http://localhost:5173](http://localhost:5173)**.
 
 ## Components
 
+### Authentication contract
+
+Task-desk defines a project-owned cookie authentication boundary without an
+external auth client library. The implemented baseline includes validated
+session, login, refresh, and logout operations plus an MSW service for
+anonymous, editor, and administrator sessions. A future backend owns access and
+rotating refresh JWTs in secure HttpOnly cookies; browser code receives only the
+validated user and an in-memory CSRF token.
+
+The AuthProvider, login UI, recovery orchestration, and instruction permission
+controls remain follow-up work. See the
+[authentication architecture](docs/architecture/authentication.md) for the
+contract, role matrix, security requirements, and backend checklist.
+
 ### Error containment and reporting
 
 Application and route failures show safe fallbacks with explicit retry, reload,

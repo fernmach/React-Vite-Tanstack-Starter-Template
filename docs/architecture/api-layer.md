@@ -71,6 +71,12 @@ Shared transport, environment, error, and Query configuration belong in shared
 layers. Endpoint knowledge stays in its owning feature. One operation lives in
 one API module; do not add feature barrel exports.
 
+Authentication is the documented cross-cutting exception: its session schemas
+and request declarations live under `src/lib/auth` because user state and
+session recovery serve every feature. The module still uses the single shared
+client, runtime schemas, Query ownership, and shared-layer dependency direction.
+See [authentication.md](authentication.md).
+
 ## Request declaration anatomy
 
 Every query declaration **MUST** contain:

@@ -1,3 +1,4 @@
+import { authHandlers } from './auth-handlers'
 import { instructionsHandlers } from './instructions-handlers'
 
-export const handlers = [...instructionsHandlers]
+export const handlers = [...authHandlers, ...instructionsHandlers]
