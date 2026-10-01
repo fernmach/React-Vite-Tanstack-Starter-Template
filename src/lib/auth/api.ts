@@ -3,6 +3,7 @@ import { apiClient } from '@/lib/api-client'
 import { normalizeApiError } from '@/lib/api-error'
 import type { MutationConfig, QueryConfig } from '@/lib/react-query'
 import {
+  authenticatedAuthSessionSchema,
   authSessionSchema,
   loginInputSchema,
   logoutResponseSchema,
@@ -56,7 +57,7 @@ export async function login(input: LoginInput, csrfToken: string) {
   return apiClient.post('/auth/login', {
     body: parseLoginInput(input),
     headers: csrfHeaders(csrfToken),
-    responseSchema: authSessionSchema,
+    responseSchema: authenticatedAuthSessionSchema,
     authenticationFailure: 'ignore',
   })
 }

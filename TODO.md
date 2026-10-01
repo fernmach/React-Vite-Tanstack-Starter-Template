@@ -4,7 +4,7 @@
 
 - [x] Reconcile the product policy and document the cookie-JWT, CSRF, role, permission, and backend security contracts (Task 1).
 - [x] Add validated auth schemas and operations plus deterministic anonymous, editor, admin, expiry, refresh, logout, and CSRF MSW behavior (Task 2).
-- [ ] Implement the project-owned Query-backed AuthProvider and shared test render support (Task 3).
+- [x] Implement the project-owned Query-backed AuthProvider and shared test render support (Task 3).
 - [ ] Connect single-flight 401 recovery and protected-cache hygiene without mutation replay (Task 4).
 - [ ] Add login, logout, safe redirect, shell, and route-guard integration (Task 5).
 - [ ] Enforce instruction permissions in the UI and MSW instruction endpoints (Task 6).

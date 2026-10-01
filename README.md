@@ -76,14 +76,17 @@ Then open **[http://localhost:5173](http://localhost:5173)**.
 ### Authentication contract
 
 Task-desk defines a project-owned cookie authentication boundary without an
-external auth client library. The implemented baseline includes validated
-session, login, refresh, and logout operations plus an MSW service for
-anonymous, editor, and administrator sessions. A future backend owns access and
-rotating refresh JWTs in secure HttpOnly cookies; browser code receives only the
-validated user and an in-memory CSRF token.
+external auth client library. The implemented baseline includes a global
+TanStack Query-backed `AuthProvider`, validated session, login, refresh, and
+logout operations, and an MSW service for anonymous, editor, and administrator
+sessions. The provider owns the in-memory user and CSRF session cache, exposes
+generic role and permission checks, and removes protected query data on logout.
+A future backend owns access and rotating refresh JWTs in secure HttpOnly
+cookies; browser code receives only the validated user and an in-memory CSRF
+token.
 
-The AuthProvider, login UI, recovery orchestration, and instruction permission
-controls remain follow-up work. See the
+The login UI, 401 recovery orchestration, route integration, and instruction
+permission controls remain follow-up work. See the
 [authentication architecture](docs/architecture/authentication.md) for the
 contract, role matrix, security requirements, and backend checklist.
 

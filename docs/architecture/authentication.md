@@ -8,14 +8,24 @@ boundaries.
 
 ## Current boundary
 
-The typed schemas, request declarations, and deterministic MSW service are
-implemented. The project-owned AuthProvider, login interface, session recovery,
-route integration, and instruction permission enforcement are later tasks.
+The typed schemas, request declarations, deterministic MSW service, and
+project-owned `AuthProvider` are implemented. The login interface, 401 session
+recovery, route integration, and instruction permission enforcement are later
+tasks.
 
 Authentication is a cross-cutting shared responsibility under `src/lib/auth`.
 It may import domain-neutral shared modules but must not import features, app
 composition, or routes. The backend is always the authoritative security
 boundary; browser-side authorization only improves the user experience.
+
+`AuthProvider` is composed inside the global `QueryClientProvider` and uses
+`['auth', 'session']` as the sole user and CSRF state. Its public states remain
+distinct: initial loading, anonymous, authenticated, explicit retry/recovery,
+and startup error. Successful login replaces the session only after response
+validation. Logout always clears the local user and queries marked
+`meta.requiresAuth`, including when its transport request fails; public cached
+data is preserved. The provider does not yet react to shared 401 events or
+refresh sessions, which remains the recovery task.
 
 ## Session ownership
 

@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { describe, expect, it } from 'vitest'
+import { useAuth } from '@/lib/auth/context'
 import { render, renderHook, screen } from './render'
 
 function CacheValue() {
@@ -23,5 +24,18 @@ describe('shared test render utilities', () => {
   it('renders hooks with the returned Query client', () => {
     const rendered = renderHook(() => useQueryClient())
     expect(rendered.result.current).toBe(rendered.queryClient)
+  })
+
+  it.each([
+    ['anonymous', null],
+    ['editor', 'EDITOR'],
+    ['admin', 'ADMIN'],
+  ] as const)('renders hooks with %s authentication state', (auth, role) => {
+    const rendered = renderHook(() => useAuth(), { auth })
+
+    expect(rendered.result.current.status).toBe(
+      role ? 'authenticated' : 'anonymous',
+    )
+    expect(rendered.result.current.user?.roles[0] ?? null).toBe(role)
   })
 })

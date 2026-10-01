@@ -33,6 +33,10 @@ export const authSessionSchema = z
   })
   .strict()
 
+export const authenticatedAuthSessionSchema = authSessionSchema.extend({
+  user: authUserSchema,
+})
+
 export const logoutResponseSchema = z
   .object({ success: z.literal(true) })
   .strict()
@@ -42,6 +46,9 @@ export type Permission = z.infer<typeof permissionSchema>
 export type AuthUser = z.infer<typeof authUserSchema>
 export type LoginInput = z.infer<typeof loginInputSchema>
 export type AuthSession = z.infer<typeof authSessionSchema>
+export type AuthenticatedAuthSession = z.infer<
+  typeof authenticatedAuthSessionSchema
+>
 export type LogoutResponse = z.infer<typeof logoutResponseSchema>
 
 export type AuthStatus =
