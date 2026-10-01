@@ -88,10 +88,33 @@ A future backend owns access and rotating refresh JWTs in secure HttpOnly
 cookies; browser code receives only the validated user and an in-memory CSRF
 token.
 
-The login UI, route integration, and instruction permission controls remain
-follow-up work. See the
+The `/login` route now provides a controlled, validated email/password form,
+safe same-origin redirect restoration, and generic authentication and
+permission guards for future protected routes. The application shell reflects
+loading, recovery, anonymous, and authenticated states, and logout always
+clears local private state even if the transport request fails. Router devtools
+are loaded only in development.
+
+Instruction reads remain public. The instruction UI uses the provider's
+permission checks to show create, edit, and active-state controls to editors,
+add archive controls for administrators, and render active state as read-only
+text for anonymous visitors. The MSW API boundary separately enforces the same
+matrix and returns safe structured 401 or 403 failures; hiding a control is
+never treated as authorization. Failed mutations are not replayed during 401
+recovery, and 403 feedback remains distinct from session expiry. See the
 [authentication architecture](docs/architecture/authentication.md) for the
-contract, role matrix, security requirements, and backend checklist.
+contract and role matrix, and the
+[backend security acceptance checklist](docs/security/backend-acceptance-checklist.md)
+for an explicit split between frontend evidence and controls that require the
+future backend or a deployed real-browser environment.
+
+Task 7 adds a cross-feature release matrix for login, recovery, permission
+changes, revoked refresh, logout, cache hygiene, forbidden access, and mutation
+non-replay. Static regression tests block auth-sensitive browser persistence and
+untrusted HTML sinks. Every production build also scans emitted artifacts and
+fails if they contain the MSW worker/runtime, deterministic mock credentials or
+CSRF prefixes, or TanStack development tools. `bun audit` remains a separate,
+explicit release check because advisory data changes independently of source.
 
 ### Error containment and reporting
 
@@ -214,8 +237,9 @@ when the build is in development mode and mocking is enabled. Tests start the
 Node server from `src/test/setup.ts`, fail on unhandled requests, and reset
 handlers and mock state after each test. Production never starts MSW, even if
 `VITE_ENABLE_API_MOCKING=true` is supplied accidentally. The production build
-also fails if an emitted chunk contains `src/mocks` or `msw`, and removes the
-development worker copied from `public/`.
+also fails if an emitted chunk contains `src/mocks`, MSW, or TanStack
+development-tool modules; removes the development worker copied from `public/`;
+and runs `bun run check:production` against emitted filenames and contents.
 
 Create an operation with all required options:
 

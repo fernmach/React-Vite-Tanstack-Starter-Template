@@ -1,8 +1,9 @@
 import { http, HttpResponse } from 'msw'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Instruction } from '../model/instruction'
 import { instructionsUrl } from '@/mocks/instructions-handlers'
 import { server } from '@/mocks/server'
+import { authenticateMockAs } from '@/mocks/auth-store'
 import { act, renderHook, waitFor } from '@/test/render'
 import {
   archiveInstruction,
@@ -20,6 +21,8 @@ const instruction: Instruction = {
 }
 
 describe('archiveInstruction', () => {
+  beforeEach(() => authenticateMockAs('ADMIN'))
+
   it('does not turn a committed archive into a write failure when follow-up work throws', async () => {
     server.use(
       http.patch(`${instructionsUrl}/*`, () =>

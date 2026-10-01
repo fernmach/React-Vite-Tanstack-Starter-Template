@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
+import { z } from 'zod'
 import { server } from './server'
 import {
   instructionsHttpError,
   instructionsNetworkFailure,
 } from './failure-overrides'
 import { resetInstructionsStore } from './instructions-store'
+import { authenticateMockAs } from './auth-store'
 
 const apiUrl = 'http://localhost/api/instructions'
 
@@ -24,6 +26,31 @@ async function patchInstruction(id: string, body: unknown) {
     response,
     body: await response.json(),
   }))
+}
+
+async function postInstruction(body: unknown) {
+  return fetch(apiUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }).then(async (response) => ({
+    response,
+    body: await response.json(),
+  }))
+}
+
+const safeErrorSchema = z
+  .object({
+    message: z.string().trim().min(1).max(500),
+    code: z.string().trim().min(1).max(100),
+  })
+  .strict()
+
+const createBody = {
+  code: 'NEW-001',
+  description: 'Nova montagem',
+  url: 'https://example.test/new-001',
+  active: true,
 }
 
 describe('Instructions MSW contract', () => {
@@ -78,6 +105,7 @@ describe('Instructions MSW contract', () => {
   )
 
   it('persists an active-state update', async () => {
+    authenticateMockAs('EDITOR')
     const updated = await patchInstruction('instruction-186681', {
       active: false,
     })
@@ -92,6 +120,7 @@ describe('Instructions MSW contract', () => {
   })
 
   it('persists archive updates and excludes archived records from lists', async () => {
+    authenticateMockAs('ADMIN')
     const archived = await patchInstruction('instruction-186681', {
       archived: true,
     })
@@ -126,6 +155,7 @@ describe('Instructions MSW contract', () => {
   })
 
   it('returns the stable 404 payload for a missing record', async () => {
+    authenticateMockAs('EDITOR')
     const result = await patchInstruction('missing', { active: true })
 
     expect(result.response.status).toBe(404)
@@ -136,6 +166,7 @@ describe('Instructions MSW contract', () => {
   })
 
   it('restores pristine records when the store resets', async () => {
+    authenticateMockAs('EDITOR')
     await patchInstruction('instruction-186681', { active: false })
     resetInstructionsStore()
     const result = await getInstructions('?term=186681')
@@ -166,5 +197,84 @@ describe('Instructions MSW contract', () => {
       message: 'Temporarily unavailable.',
       code: 'TEMPORARY_FAILURE',
     })
+  })
+
+  it.each([
+    ['create', () => postInstruction(createBody)],
+    [
+      'update',
+      () =>
+        patchInstruction('instruction-186681', {
+          description: 'Descrição atualizada',
+        }),
+    ],
+    [
+      'set active',
+      () => patchInstruction('instruction-186681', { active: false }),
+    ],
+    [
+      'archive',
+      () => patchInstruction('instruction-186681', { archived: true }),
+    ],
+  ])('returns a safe 401 for anonymous %s requests', async (_name, request) => {
+    const result = await request()
+
+    expect(result.response.status).toBe(401)
+    expect(safeErrorSchema.parse(result.body)).toEqual({
+      message: 'Authentication is required for this operation.',
+      code: 'AUTHENTICATION_REQUIRED',
+    })
+  })
+
+  it('allows editor writes except archive, which returns a safe 403', async () => {
+    authenticateMockAs('EDITOR')
+
+    expect((await postInstruction(createBody)).response.status).toBe(201)
+    expect(
+      (
+        await patchInstruction('instruction-186681', {
+          description: 'Descrição atualizada',
+        })
+      ).response.status,
+    ).toBe(200)
+    expect(
+      (await patchInstruction('instruction-186681', { active: false })).response
+        .status,
+    ).toBe(200)
+
+    const archived = await patchInstruction('instruction-186681', {
+      archived: true,
+    })
+    expect(archived.response.status).toBe(403)
+    expect(safeErrorSchema.parse(archived.body)).toEqual({
+      message: 'Permission is required for this operation.',
+      code: 'FORBIDDEN',
+    })
+  })
+
+  it('allows administrators to create, update, set active, and archive', async () => {
+    authenticateMockAs('ADMIN')
+
+    const created = await postInstruction(createBody)
+    const updated = await patchInstruction('instruction-186681', {
+      description: 'Descrição administrativa',
+    })
+    const activated = await patchInstruction('instruction-186682', {
+      active: true,
+    })
+    const archived = await patchInstruction('instruction-186683', {
+      archived: true,
+    })
+
+    expect(created.response.status).toBe(201)
+    expect(created.body).toMatchObject({ ...createBody, archived: false })
+    expect(updated.response.status).toBe(200)
+    expect(updated.body).toMatchObject({
+      description: 'Descrição administrativa',
+    })
+    expect(activated.response.status).toBe(200)
+    expect(activated.body).toMatchObject({ active: true })
+    expect(archived.response.status).toBe(200)
+    expect(archived.body).toMatchObject({ archived: true })
   })
 })

@@ -17,6 +17,7 @@ import { useArchiveInstruction } from '../api/archive-instruction'
 import { useRefreshInstructionLists } from '../api/use-refresh-instruction-lists'
 import { instructionWriteErrorCopy } from '../model/instruction-error-copy'
 import type { Instruction } from '../model/instruction'
+import { useInstructionPermissions } from './use-instruction-permissions'
 
 export function DeleteInstructionDialog({
   instruction,
@@ -27,6 +28,7 @@ export function DeleteInstructionDialog({
   onAnnounce: (message: string, visible?: boolean) => void
   compact?: boolean
 }) {
+  const { canArchive } = useInstructionPermissions()
   const [open, setOpen] = useState(false)
   const refreshList = useRefreshInstructionLists()
   const followUpFailure = useRef<'refresh' | 'callback' | null>(null)
@@ -64,6 +66,8 @@ export function DeleteInstructionDialog({
       setFeedback({ text, neutral: apiError.status === 401 })
     }
   }
+
+  if (!canArchive) return null
 
   return (
     <AlertDialog

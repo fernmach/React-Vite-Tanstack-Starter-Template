@@ -41,7 +41,9 @@ describe('InstructionsListPage', () => {
         return HttpResponse.json(page())
       }),
     )
-    const { queryClient } = render(<InstructionsListPage />)
+    const { queryClient } = render(<InstructionsListPage />, {
+      auth: 'anonymous',
+    })
     await queryClient.cancelQueries()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(screen.queryByText(/Não foi possível/)).not.toBeInTheDocument()
@@ -61,7 +63,9 @@ describe('InstructionsListPage', () => {
           : HttpResponse.json(page()),
       ),
     )
-    const { queryClient } = render(<InstructionsListPage />)
+    const { queryClient } = render(<InstructionsListPage />, {
+      auth: 'anonymous',
+    })
     expect(await screen.findAllByText('MPV-001')).not.toHaveLength(0)
     fail = true
     await queryClient.invalidateQueries()
@@ -90,7 +94,7 @@ describe('InstructionsListPage', () => {
           : HttpResponse.json(page())
       }),
     )
-    render(<InstructionsListPage />)
+    render(<InstructionsListPage />, { auth: 'anonymous' })
     expect(await screen.findAllByText('MPV-001')).not.toHaveLength(0)
     await user.click(screen.getByRole('link', { name: 'Próxima página' }))
     expect(
@@ -106,7 +110,7 @@ describe('InstructionsListPage', () => {
         HttpResponse.json({ items: ['PRIVATE INVALID DATA'] }),
       ),
     )
-    render(<InstructionsListPage />)
+    render(<InstructionsListPage />, { auth: 'anonymous' })
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Os dados recebidos não puderam ser exibidos com segurança.',
     )
@@ -119,7 +123,7 @@ describe('InstructionsListPage', () => {
         HttpResponse.json({ message: 'PRIVATE AUTH' }, { status: 401 }),
       ),
     )
-    render(<InstructionsListPage />)
+    render(<InstructionsListPage />, { auth: 'anonymous' })
     expect(
       await screen.findByText('A lista de instruções está indisponível.'),
     ).toBeVisible()
@@ -148,7 +152,7 @@ describe('InstructionsListPage', () => {
       }),
     )
 
-    render(<InstructionsListPage />)
+    render(<InstructionsListPage />, { auth: 'anonymous' })
     expect(screen.getByText('Carregando instruções…')).toBeVisible()
 
     releaseInitial()
@@ -187,7 +191,7 @@ describe('InstructionsListPage', () => {
       }),
     )
 
-    render(<InstructionsListPage />)
+    render(<InstructionsListPage />, { auth: 'anonymous' })
     expect(
       await screen.findByText(
         'Não foi possível conectar ao serviço. Tente novamente.',
@@ -197,5 +201,60 @@ describe('InstructionsListPage', () => {
     await user.click(screen.getByRole('button', { name: 'Tentar novamente' }))
     expect(await screen.findAllByText('MPV-001')).not.toHaveLength(0)
     expect(attempts).toBe(2)
+  })
+
+  it('renders anonymous instruction access as semantic read-only content', async () => {
+    server.use(http.get(instructionsUrl, () => HttpResponse.json(page())))
+
+    render(<InstructionsListPage />, { auth: 'anonymous' })
+
+    expect(await screen.findAllByText('MPV-001')).not.toHaveLength(0)
+    expect(screen.getAllByRole('link', { name: item.url })).not.toHaveLength(0)
+    expect(screen.getAllByText('Ativo')).not.toHaveLength(0)
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: /Nova Instrução|Editar instrução/ }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /Excluir instrução/ }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('shows editor controls except archive', async () => {
+    server.use(http.get(instructionsUrl, () => HttpResponse.json(page())))
+
+    render(<InstructionsListPage />, { auth: 'editor' })
+
+    expect(
+      await screen.findByRole('link', { name: 'Nova Instrução' }),
+    ).toBeVisible()
+    expect(
+      await screen.findAllByRole('link', { name: 'Editar instrução MPV-001' }),
+    ).not.toHaveLength(0)
+    expect(
+      screen.getAllByRole('switch', { name: 'Desativar instrução MPV-001' }),
+    ).not.toHaveLength(0)
+    expect(
+      screen.queryByRole('button', { name: 'Excluir instrução MPV-001' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('shows every existing write control to administrators', async () => {
+    server.use(http.get(instructionsUrl, () => HttpResponse.json(page())))
+
+    render(<InstructionsListPage />, { auth: 'admin' })
+
+    expect(
+      await screen.findByRole('link', { name: 'Nova Instrução' }),
+    ).toBeVisible()
+    expect(
+      await screen.findAllByRole('link', { name: 'Editar instrução MPV-001' }),
+    ).not.toHaveLength(0)
+    expect(
+      screen.getAllByRole('switch', { name: 'Desativar instrução MPV-001' }),
+    ).not.toHaveLength(0)
+    expect(
+      screen.getAllByRole('button', { name: 'Excluir instrução MPV-001' }),
+    ).not.toHaveLength(0)
   })
 })

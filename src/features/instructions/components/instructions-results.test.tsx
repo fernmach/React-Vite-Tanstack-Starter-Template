@@ -32,6 +32,7 @@ describe('InstructionsResults', () => {
         result={result}
         onRetry={vi.fn()}
       />,
+      { auth: 'editor' },
     )
     const table = screen.getByRole('table')
     expect(
@@ -85,7 +86,9 @@ describe('InstructionsResults', () => {
       text: 'Não foi possível carregar as instruções. Tente novamente.',
     },
   ])('distingue o estado: $text', ({ props, text }) => {
-    render(<InstructionsResults {...props} onRetry={vi.fn()} />)
+    render(<InstructionsResults {...props} onRetry={vi.fn()} />, {
+      auth: 'anonymous',
+    })
     expect(screen.getByText(text)).toBeVisible()
     expect(
       screen.queryByText(/Private|socket|internal/),
@@ -108,6 +111,7 @@ describe('InstructionsResults', () => {
         result={null}
         onRetry={vi.fn()}
       />,
+      { auth: 'anonymous' },
     )
 
     expect(
@@ -136,6 +140,7 @@ describe('InstructionsResults', () => {
         result={null}
         onRetry={vi.fn()}
       />,
+      { auth: 'anonymous' },
     )
 
     expect(screen.getByRole('status')).toHaveTextContent(

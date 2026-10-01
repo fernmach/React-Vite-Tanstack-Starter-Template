@@ -9,9 +9,9 @@ boundaries.
 ## Current boundary
 
 The typed schemas, request declarations, deterministic MSW service,
-project-owned `AuthProvider`, and application-owned 401 recovery are
-implemented. The login interface, route integration, and instruction
-permission enforcement are later tasks.
+project-owned `AuthProvider`, application-owned 401 recovery, login route,
+application-shell session controls, reusable route guards, and instruction
+permission enforcement are implemented.
 
 Authentication is a cross-cutting shared responsibility under `src/lib/auth`.
 It may import domain-neutral shared modules but must not import features, app
@@ -27,6 +27,37 @@ validation. Logout always clears the local user and queries marked
 data is preserved. The application recovery effect retains the authenticated
 user while refresh is in flight, so the provider exposes `recovering` without a
 destructive UI transition.
+
+## Login, logout, and routing
+
+`/login` is a thin TanStack Router route that delegates its accessible,
+controlled email/password form to `src/features/auth`. The form uses Zod at the
+UI boundary, browser-standard labels and autocomplete values, native keyboard
+submission, disabled progress states, and live status/error announcements.
+Invalid credentials and transport failures map to application-owned Portuguese
+copy; raw backend messages are never rendered.
+
+Successful login updates `['auth', 'session']` before navigation. A requested
+destination is retained only when it is a same-origin root-relative path.
+Absolute and protocol-relative URLs, backslashes, control characters,
+malformed encodings, encoded redirect forms, and `/login` self-loops are
+discarded. Safe query strings and fragments are preserved. `/instrucoes` is the
+default destination, and authenticated visitors to `/login` are redirected
+there or to the same validated destination.
+
+The application shell renders `Entrar` for anonymous sessions, a non-interactive
+live status during loading or recovery, and the schema-validated user name plus
+`Sair` for authenticated sessions. Logout delegates to `AuthProvider`; local
+user and protected-query cleanup therefore completes even when the server call
+fails, after which the shell announces safe failure copy.
+
+`requireAuthentication` and `requirePermission` in
+`src/lib/auth/route-guards.ts` are generic TanStack Router `beforeLoad` helpers.
+They read the same Query client supplied to `AuthProvider`, preserve only a
+validated login destination for anonymous users, and redirect authenticated
+users without a required permission to the public default. These guards are UX
+controls only; the backend remains authoritative. Router devtools are lazy and
+development-only so their module is absent from production output.
 
 ## Session ownership
 
@@ -49,6 +80,28 @@ Anonymous users may view and search instructions. Editors receive
 `instructions:archive`. Session responses supply both roles and permissions,
 and the client treats that validated response as authoritative.
 
+| Instruction capability                             | Anonymous       | Editor | Administrator |
+| -------------------------------------------------- | --------------- | ------ | ------------- |
+| List, search, paginate, and follow read-only links | Yes             | Yes    | Yes           |
+| Create                                             | No              | Yes    | Yes           |
+| Edit                                               | No              | Yes    | Yes           |
+| Change active state                                | Read-only state | Yes    | Yes           |
+| Archive                                            | No              | No     | Yes           |
+
+Instruction UI components derive affordances exclusively from
+`AuthProvider.can(permission)`. They omit unavailable create, edit, toggle, and
+archive controls rather than rendering misleading disabled actions. Active
+state remains visible as semantic read-only text when the toggle is not
+available. These checks are a usability layer, not a security boundary.
+
+The MSW instruction handlers independently enforce the same permission matrix
+for `POST /instructions` and each supported `PATCH /instructions/:id` shape.
+They return a structured `401 AUTHENTICATION_REQUIRED` response when no valid
+session exists and `403 FORBIDDEN` when an authenticated principal lacks the
+operation's permission. A 403 receives distinct safe local feedback and never
+starts authentication recovery. A 401 may start the ordinary single-flight
+recovery episode, but the failed mutation is never replayed.
+
 ## HTTP contract
 
 - `GET /auth/session` returns
@@ -61,6 +114,9 @@ and the client treats that validated response as authoritative.
   returns `401 SESSION_EXPIRED`.
 - `POST /auth/logout` requires `X-CSRF-Token`, revokes the refresh session,
   expires both cookies, and returns `200 { success: true }`.
+- Instruction mutation authorization maps create to `instructions:create`,
+  general updates to `instructions:update`, active-state changes to
+  `instructions:set-active`, and archive to `instructions:archive`.
 
 The CSRF token stays in memory, is sent only in the `X-CSRF-Token` header on
 state-changing authentication requests, and rotates after login and refresh.
@@ -94,9 +150,9 @@ to recover normally.
 
 ## Backend acceptance checklist
 
-Before replacing MSW, verify TLS and HSTS; host-only `Secure`, `HttpOnly`,
-explicitly `SameSite` cookies; JWT issuer, audience, signature, expiry, and
-algorithm checks; refresh reuse detection and revocation; CSRF and `Origin`
-validation; exact credentialed CORS origins; permission enforcement; login
-throttling; secure password hashing; safe audit records; CSP; clickjacking
-protection; and a restrictive referrer policy.
+The release-ready checklist is maintained in
+[`docs/security/backend-acceptance-checklist.md`](../security/backend-acceptance-checklist.md).
+It labels frontend/build evidence separately from backend and deployed-browser
+obligations, including cookie flags, TLS/CORS, JWT verification, refresh reuse
+detection, CSRF rotation, mutation authorization, account defenses, security
+headers, secret-free auditing, dependency management, and real-browser proof.

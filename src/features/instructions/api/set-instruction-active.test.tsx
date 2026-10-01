@@ -1,9 +1,10 @@
 import { http, HttpResponse } from 'msw'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Instruction, InstructionPage } from '../model/instruction'
 import { instructionsHttpError } from '@/mocks/failure-overrides'
 import { instructionsUrl } from '@/mocks/instructions-handlers'
 import { server } from '@/mocks/server'
+import { authenticateMockAs } from '@/mocks/auth-store'
 import { act, renderHook, waitFor } from '@/test/render'
 import { instructionKeys } from './instruction-keys'
 import {
@@ -33,6 +34,8 @@ function page(items: Instruction[], pageNumber: number): InstructionPage {
 }
 
 describe('setInstructionActive', () => {
+  beforeEach(() => authenticateMockAs('EDITOR'))
+
   it('keeps a successful write successful when refresh and consumer callbacks fail', async () => {
     server.use(
       http.patch(`${instructionsUrl}/*`, () =>

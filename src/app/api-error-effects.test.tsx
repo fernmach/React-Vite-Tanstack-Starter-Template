@@ -22,6 +22,7 @@ import {
 import { server } from '@/mocks/server'
 import { act, fireEvent, render, screen, waitFor } from '@/test/render'
 import { ApiErrorEffects } from './api-error-effects'
+import { setInstructionActive } from '@/features/instructions/api/set-instruction-active'
 
 afterEach(() => {
   resetAuthenticationRequiredEpisode()
@@ -79,6 +80,22 @@ function FailingMutation({ onRequest }: { onRequest: () => void }) {
   })
 
   return <button onClick={() => mutation.mutate()}>Run private action</button>
+}
+
+function FailingInstructionMutation({ onRequest }: { onRequest: () => void }) {
+  const mutation = useMutation({
+    mutationFn: async () => {
+      onRequest()
+      return setInstructionActive({
+        id: 'instruction-186681',
+        active: false,
+      })
+    },
+  })
+
+  return (
+    <button onClick={() => mutation.mutate()}>Change instruction state</button>
+  )
 }
 
 describe('ApiErrorEffects', () => {
@@ -216,6 +233,37 @@ describe('ApiErrorEffects', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Run private action' }))
+
+    await waitFor(() => expect(mutationRequests).toHaveBeenCalledTimes(1))
+    await screen.findByText('authenticated')
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(mutationRequests).toHaveBeenCalledTimes(1)
+  })
+
+  it('recovers an instruction mutation 401 without replaying the write', async () => {
+    const mutationRequests = vi.fn()
+    server.use(
+      http.patch('*/instructions/*', () =>
+        HttpResponse.json(
+          {
+            message: 'Authentication required.',
+            code: 'AUTHENTICATION_REQUIRED',
+          },
+          { status: 401 },
+        ),
+      ),
+    )
+    render(
+      <EffectsHarness>
+        <FailingInstructionMutation onRequest={mutationRequests} />
+        <AuthProbe />
+      </EffectsHarness>,
+      { auth: 'editor' },
+    )
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Change instruction state' }),
+    )
 
     await waitFor(() => expect(mutationRequests).toHaveBeenCalledTimes(1))
     await screen.findByText('authenticated')

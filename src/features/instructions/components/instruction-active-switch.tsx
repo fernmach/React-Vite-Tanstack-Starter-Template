@@ -5,6 +5,7 @@ import { useSetInstructionActive } from '../api/set-instruction-active'
 import { useRefreshInstructionLists } from '../api/use-refresh-instruction-lists'
 import { instructionWriteErrorCopy } from '../model/instruction-error-copy'
 import type { Instruction } from '../model/instruction'
+import { useInstructionPermissions } from './use-instruction-permissions'
 
 export function InstructionActiveSwitch({
   instruction,
@@ -13,6 +14,7 @@ export function InstructionActiveSwitch({
   instruction: Instruction
   onAnnounce: (message: string) => void
 }) {
+  const { canSetActive } = useInstructionPermissions()
   const [feedback, setFeedback] = useState<{
     text: string
     neutral: boolean
@@ -46,6 +48,16 @@ export function InstructionActiveSwitch({
     setFeedback(null)
     mutation.mutate({ id: instruction.id, active: next })
   }
+
+  if (!canSetActive)
+    return (
+      <span
+        className="text-sm"
+        aria-label={`Estado da instrução ${instruction.code}: ${instruction.active ? 'Ativo' : 'Inativo'}`}
+      >
+        {instruction.active ? 'Ativo' : 'Inativo'}
+      </span>
+    )
 
   return (
     <div>

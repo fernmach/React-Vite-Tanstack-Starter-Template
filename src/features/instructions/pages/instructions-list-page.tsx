@@ -9,10 +9,12 @@ import { InstructionCard } from '../components/instruction-card'
 import { InstructionsPagination } from '../components/instructions-pagination'
 import { InstructionsResults } from '../components/instructions-results'
 import { InstructionsSearch } from '../components/instructions-search'
+import { useInstructionPermissions } from '../components/use-instruction-permissions'
 
 const DEFAULT_PAGE_SIZE = 20
 
 export function InstructionsListPage() {
+  const { canCreate } = useInstructionPermissions()
   const [term, setTerm] = useState('')
   const [page, setPage] = useState(1)
   const [announcement, setAnnouncement] = useState('')
@@ -60,14 +62,16 @@ export function InstructionsListPage() {
         <h1 className="text-primary text-2xl font-semibold tracking-tight">
           Instruções de Montagem de MPV
         </h1>
-        <Button
-          variant="link"
-          render={<a href="/instrucoes/nova" />}
-          className="self-start sm:self-auto"
-        >
-          <Plus data-icon="inline-start" aria-hidden="true" />
-          Nova Instrução
-        </Button>
+        {canCreate && (
+          <Button
+            variant="link"
+            render={<a href="/instrucoes/nova" />}
+            className="self-start sm:self-auto"
+          >
+            <Plus data-icon="inline-start" aria-hidden="true" />
+            Nova Instrução
+          </Button>
+        )}
       </div>
       <InstructionsSearch
         term={term}

@@ -13,6 +13,7 @@ import type { InstructionPage } from '../model/instruction'
 import { instructionQueryErrorCopy } from '../model/instruction-error-copy'
 import { DeleteInstructionDialog } from './delete-instruction-dialog'
 import { InstructionActiveSwitch } from './instruction-active-switch'
+import { useInstructionPermissions } from './use-instruction-permissions'
 
 export function InstructionsResults({
   loading,
@@ -27,6 +28,8 @@ export function InstructionsResults({
   onRetry: () => void
   onAnnounce?: (message: string) => void
 }) {
+  const { canUpdate, canArchive } = useInstructionPermissions()
+
   if (loading)
     return (
       <div
@@ -66,8 +69,10 @@ export function InstructionsResults({
             <TableHead>Descrição de MPV</TableHead>
             <TableHead>URL</TableHead>
             <TableHead className="text-center">Ativo</TableHead>
-            <TableHead className="text-center">Editar</TableHead>
-            <TableHead className="text-center">Excluir</TableHead>
+            {canUpdate && <TableHead className="text-center">Editar</TableHead>}
+            {canArchive && (
+              <TableHead className="text-center">Excluir</TableHead>
+            )}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -89,22 +94,26 @@ export function InstructionsResults({
                   onAnnounce={onAnnounce}
                 />
               </TableCell>
-              <TableCell className="text-center">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  render={<a href={`/instrucoes/${item.id}/editar`} />}
-                  aria-label={`Editar instrução ${item.code}`}
-                >
-                  <Pencil aria-hidden="true" />
-                </Button>
-              </TableCell>
-              <TableCell className="text-center">
-                <DeleteInstructionDialog
-                  instruction={item}
-                  onAnnounce={onAnnounce}
-                />
-              </TableCell>
+              {canUpdate && (
+                <TableCell className="text-center">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    render={<a href={`/instrucoes/${item.id}/editar`} />}
+                    aria-label={`Editar instrução ${item.code}`}
+                  >
+                    <Pencil aria-hidden="true" />
+                  </Button>
+                </TableCell>
+              )}
+              {canArchive && (
+                <TableCell className="text-center">
+                  <DeleteInstructionDialog
+                    instruction={item}
+                    onAnnounce={onAnnounce}
+                  />
+                </TableCell>
+              )}
             </TableRow>
           ))}
         </TableBody>

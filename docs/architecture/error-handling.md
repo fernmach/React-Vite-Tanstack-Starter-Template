@@ -16,8 +16,8 @@ is the default unless review records a reason to differ. **MAY** and
 
 The baseline works without a live backend. Typed authentication operations and
 the deterministic MSW service follow
-[the authentication contract](authentication.md), while the AuthProvider,
-login route, and token-refresh orchestration remain later tasks. No external
+[the authentication contract](authentication.md). The AuthProvider, login
+route, safe redirect handling, and token-refresh orchestration are implemented. No external
 error-reporting vendor is required.
 
 ## Implemented baseline

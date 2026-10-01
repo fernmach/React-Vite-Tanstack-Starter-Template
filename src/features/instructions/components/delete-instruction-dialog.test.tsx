@@ -25,7 +25,7 @@ describe('DeleteInstructionDialog', () => {
   it('closes after a confirmed archive even when refresh fails and reports the accurate outcome', async () => {
     const user = userEvent.setup()
     const announce = vi.fn()
-    render(<Harness onAnnounce={announce} />)
+    render(<Harness onAnnounce={announce} />, { auth: 'admin' })
     await user.click(
       await screen.findByRole('button', { name: 'Excluir instrução 186682' }),
     )
@@ -51,7 +51,7 @@ describe('DeleteInstructionDialog', () => {
 
   it('keeps a missing-record failure in the dialog with list recovery', async () => {
     const user = userEvent.setup()
-    render(<Harness onAnnounce={vi.fn()} />)
+    render(<Harness onAnnounce={vi.fn()} />, { auth: 'admin' })
     await user.click(
       await screen.findByRole('button', { name: 'Excluir instrução 186682' }),
     )
@@ -75,7 +75,7 @@ describe('DeleteInstructionDialog', () => {
 
   it('identifies the record and returns focus when cancellation closes it', async () => {
     const user = userEvent.setup()
-    render(<Harness onAnnounce={vi.fn()} />)
+    render(<Harness onAnnounce={vi.fn()} />, { auth: 'admin' })
     const trigger = await screen.findByRole('button', {
       name: 'Excluir instrução 186682',
     })
@@ -91,7 +91,7 @@ describe('DeleteInstructionDialog', () => {
   it('closes after archive refetch removes the record and announces success', async () => {
     const user = userEvent.setup()
     const announce = vi.fn()
-    render(<Harness onAnnounce={announce} />)
+    render(<Harness onAnnounce={announce} />, { auth: 'admin' })
 
     await user.click(
       await screen.findByRole('button', {
@@ -114,7 +114,7 @@ describe('DeleteInstructionDialog', () => {
     const requestGate = new Promise<void>((resolve) => {
       releaseRequest = resolve
     })
-    render(<Harness onAnnounce={announce} />)
+    render(<Harness onAnnounce={announce} />, { auth: 'admin' })
     await user.click(
       await screen.findByRole('button', {
         name: 'Excluir instrução 186682',

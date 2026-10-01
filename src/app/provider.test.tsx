@@ -49,7 +49,7 @@ describe('AppProvider', () => {
       errorReporting.configure({ reporter: undefined, development: false })
     }
   })
-  it('keeps one Query client for a mounted app and enables development tools', () => {
+  it('keeps one Query client and excludes development tools from test builds', () => {
     const clients: QueryClient[] = []
     const onClient = (client: QueryClient) => clients.push(client)
     const first = render(
@@ -66,7 +66,7 @@ describe('AppProvider', () => {
     )
 
     expect(clients[clients.length - 1]).toBe(initialClient)
-    expect(screen.getByTestId('query-devtools')).toBeInTheDocument()
+    expect(screen.queryByTestId('query-devtools')).not.toBeInTheDocument()
     first.unmount()
 
     render(
