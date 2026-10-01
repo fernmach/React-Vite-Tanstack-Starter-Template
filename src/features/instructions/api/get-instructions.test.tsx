@@ -92,6 +92,7 @@ describe('getInstructions', () => {
     expect(
       getInstructionsQueryOptions({ term: ' montagem ' }).queryKey,
     ).toEqual(instructionKeys.list(explicit))
+    expect(getInstructionsQueryOptions().meta?.requiresAuth).toBe(false)
     expect(instructionKeys.list({ ...explicit, page: 2 })).not.toEqual(
       instructionKeys.list(explicit),
     )

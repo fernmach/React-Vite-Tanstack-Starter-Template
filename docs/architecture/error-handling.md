@@ -155,30 +155,27 @@ event to an application-owned handler. The transport MUST remain independent
 of routing, notifications, translations, and session storage. Query/mutation
 cache integration can dispatch the event through an injected callback.
 
-The standalone handler MUST show one accessible, visible authentication-required
-notice. It must not redirect to a guessed route, attempt refresh, erase arbitrary
-storage, or claim a previous session existed. A host application MAY replace the
-handler with its established session policy later.
+The implemented handler is `ApiErrorEffects`, mounted once by the root route
+below `RouterProvider`. It is the sole application subscriber to the shared
+event channel. The channel replays an active episode to a late subscriber, and
+the handler keeps one refresh promise for that episode so concurrent 401s and
+StrictMode effect remounting do not duplicate recovery.
 
-The implemented handler is `ApiErrorEffects`, mounted by the root route below
-`RouterProvider`. It subscribes to the shared event channel, which replays an
-active episode to late subscribers. `NotificationProvider` adapts the shared
-`useNotifications` API to the application-level Sonner toaster. Callers provide
-a stable notice ID; duplicate IDs do not create duplicate notices. Authentication
-notices remain visible until explicit dismissal or confirmed recovery. The optional
-`onAuthenticationRequired(event, completeRecovery)` callback is the host policy
-extension point. `completeRecovery` dismisses the notice and resets only its
-matching episode. The notice's dismiss button performs the same reset. Neither
-path navigates or changes session storage.
+Recovery calls `POST /auth/refresh` with the current in-memory CSRF token while
+the canonical session query retains the existing user and exposes
+`recovering`. On success, it replaces the validated session, resets the active
+episode, and refetches only active queries marked `meta.requiresAuth`. It never
+replays a mutation or refetches a public query merely because recovery
+succeeded. On failure, it makes the session anonymous, removes protected
+queries, preserves public data, resets the episode, and shows exactly one
+Sonner notification with safe static session-expired copy. A stable
+episode-derived notice ID prevents duplicate notices.
 
-Concurrent 401 failures MUST coalesce into one active notice/event episode.
-Reset that episode when the host confirms authentication recovery or the user
-explicitly retries after dismissing the notice; successful public requests do
-not prove authentication recovery. The shared notice owns authentication copy.
-Local query/mutation views may retain a neutral unavailable/failed state but
-must not repeat the same authentication alert. A 403 uses ordinary forbidden
-feedback without an authentication event. Malformed 401 payloads additionally
-produce one contract report without a second visible alert.
+Login and refresh requests suppress authentication publication, so their 401s
+cannot recurse. A 403 uses ordinary forbidden feedback and never starts
+refresh. Malformed 401 payloads additionally produce one contract report
+without a second visible alert. Once an episode settles, later independent 401s
+can start a new refresh.
 
 ## Backend codes and user messages
 

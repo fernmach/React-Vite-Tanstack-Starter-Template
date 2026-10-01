@@ -114,10 +114,14 @@ describe('auth API', () => {
 
     expireMockAccess()
     revokeMockRefresh()
+    const listener = vi.fn()
+    const unsubscribe = subscribeAuthenticationRequired(listener)
     await expect(refreshSession(refreshed.csrfToken)).rejects.toMatchObject({
       status: 401,
       code: 'SESSION_EXPIRED',
     })
+    expect(listener).not.toHaveBeenCalled()
+    unsubscribe()
   })
 
   it('logs out and exposes a fresh anonymous session', async () => {

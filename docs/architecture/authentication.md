@@ -8,10 +8,10 @@ boundaries.
 
 ## Current boundary
 
-The typed schemas, request declarations, deterministic MSW service, and
-project-owned `AuthProvider` are implemented. The login interface, 401 session
-recovery, route integration, and instruction permission enforcement are later
-tasks.
+The typed schemas, request declarations, deterministic MSW service,
+project-owned `AuthProvider`, and application-owned 401 recovery are
+implemented. The login interface, route integration, and instruction
+permission enforcement are later tasks.
 
 Authentication is a cross-cutting shared responsibility under `src/lib/auth`.
 It may import domain-neutral shared modules but must not import features, app
@@ -24,8 +24,9 @@ distinct: initial loading, anonymous, authenticated, explicit retry/recovery,
 and startup error. Successful login replaces the session only after response
 validation. Logout always clears the local user and queries marked
 `meta.requiresAuth`, including when its transport request fails; public cached
-data is preserved. The provider does not yet react to shared 401 events or
-refresh sessions, which remains the recovery task.
+data is preserved. The application recovery effect retains the authenticated
+user while refresh is in flight, so the provider exposes `recovering` without a
+destructive UI transition.
 
 ## Session ownership
 
@@ -73,11 +74,23 @@ Authentication operations that intentionally handle a 401 mark the request as
 from recursively publishing the shared authentication-required event. Other
 401 responses retain the existing application event contract.
 
-Future recovery will coalesce concurrent 401 responses, refresh once, update
-the validated session, and refetch only active queries marked
-`meta.requiresAuth`. Mutations are never replayed automatically. Failed refresh
-removes protected cached data while preserving public instruction data. A 403
-means insufficient permission and never starts refresh.
+The single application-owned recovery effect subscribes to the shared event
+channel and coalesces each active 401 episode into one refresh promise. It calls
+`POST /auth/refresh` with the current in-memory CSRF token. A successful,
+validated response replaces the canonical session and rotated CSRF token,
+resets the episode, and refetches only active queries marked
+`meta.requiresAuth`. Public instruction reads are explicitly marked public and
+are neither invalidated nor recovery-refetched. Mutations are never replayed
+automatically.
+
+A failed refresh replaces the canonical session with anonymous state, cancels
+and removes protected queries, preserves public query data, resets the episode,
+and shows one application-owned `Sessão expirada` notification containing only
+safe static copy. Login and refresh requests use
+`authenticationFailure: 'ignore'`, so their 401 responses cannot recurse. A
+403 means insufficient permission and never starts refresh. Resetting the
+single-flight state after either outcome allows a later independent 401 episode
+to recover normally.
 
 ## Backend acceptance checklist
 

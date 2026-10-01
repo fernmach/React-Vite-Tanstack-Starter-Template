@@ -81,12 +81,15 @@ TanStack Query-backed `AuthProvider`, validated session, login, refresh, and
 logout operations, and an MSW service for anonymous, editor, and administrator
 sessions. The provider owns the in-memory user and CSRF session cache, exposes
 generic role and permission checks, and removes protected query data on logout.
+The application coalesces concurrent 401s into one refresh, retains the current
+user while recovering, selectively refetches active protected queries after
+success, and signs out locally without erasing public cache data after failure.
 A future backend owns access and rotating refresh JWTs in secure HttpOnly
 cookies; browser code receives only the validated user and an in-memory CSRF
 token.
 
-The login UI, 401 recovery orchestration, route integration, and instruction
-permission controls remain follow-up work. See the
+The login UI, route integration, and instruction permission controls remain
+follow-up work. See the
 [authentication architecture](docs/architecture/authentication.md) for the
 contract, role matrix, security requirements, and backend checklist.
 
