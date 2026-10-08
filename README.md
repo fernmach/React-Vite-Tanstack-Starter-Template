@@ -137,12 +137,19 @@ ownership and recovery details.
 
 ### UI primitives
 
-The UI inventory currently includes `alert-dialog`, `button`, `card`, `field`,
-`input`, `label`, `pagination`, `separator`, `sonner`, `switch`, and `table`.
-The login form composes the official shadcn `Field` API with `Label` and
-`Separator`; these three files currently come from the official **Radix-backed**
-registry and use `@radix-ui/react-label` and `@radix-ui/react-separator` where a
-primitive is required.
+The UI inventory currently includes `alert`, `alert-dialog`, `badge`, `button`,
+`card`, `empty`, `field`, `input`, `label`, `pagination`, `separator`,
+`skeleton`, `sonner`, `switch`, and `table`. The login form composes the
+official shadcn `Field` API with `Label` and `Separator`; these three files
+currently come from the official **Radix-backed** registry and use
+`@radix-ui/react-label` and `@radix-ui/react-separator` where a primitive is
+required.
+
+Use `Alert` for inline feedback and retry surfaces, `Badge` for compact
+read-only status labels, `Empty` with its header/title/description composition
+for no-results states, and `Skeleton` for visual loading placeholders. Keep a
+separate screen-reader status message with skeletons, and give each failure a
+single feedback owner.
 
 This is a mixed implementation rather than a completed migration of every
 component to one primitive library. Existing components still include Base UI

@@ -76,6 +76,7 @@ Use `font-medium` for actionable labels and `font-semibold` for section headings
 
 - The repository is currently mixed rather than fully migrated to one primitive library.
 - `field.tsx`, `label.tsx`, and `separator.tsx` are official shadcn Radix-registry files. `Label` and `Separator` use `@radix-ui/react-label` and `@radix-ui/react-separator`; `Field` composes those primitives with semantic form layout and error helpers.
+- `alert.tsx`, `badge.tsx`, `empty.tsx`, and `skeleton.tsx` are project-owned shadcn compositions without an external primitive dependency. Their addition does not change the project's base or preset.
 - Existing components may still integrate Base UI. Confirm the component source and the shadcn CLI's current `base` result before using library-specific composition APIs.
 - The login form uses `FieldGroup`, `Field`, `FieldLabel`, and `FieldError`, with `data-invalid`/`aria-invalid` and `data-disabled`/`disabled` paired for accessible state.
 
@@ -99,6 +100,10 @@ Source: `src/components/ui/button.tsx`
 - Hover: small delta (`/80`, `/90`, or `hover:bg-accent`)
 - Focus: visible ring using `ring` token
 - Disabled: `disabled:opacity-50 disabled:pointer-events-none`
+- Inline feedback and retry actions use `Alert`; keep one visible feedback owner per failure.
+- Read-only states use semantic `Badge` variants instead of custom status spans.
+- No-results states compose `Empty`, `EmptyHeader`, `EmptyTitle`, and `EmptyDescription`.
+- Loading placeholders use `Skeleton` with `aria-hidden="true"` plus a separate screen-reader `role="status"` message.
 
 ## Layout & Composition
 

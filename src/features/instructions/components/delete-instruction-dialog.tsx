@@ -1,5 +1,6 @@
 import { useRef, useState, type MouseEvent } from 'react'
 import { Trash2 } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -85,10 +86,7 @@ export function DeleteInstructionDialog({
           size={compact ? 'sm' : 'icon'}
           aria-label={`Excluir instrução ${instruction.code}`}
         >
-          <Trash2
-            data-icon={compact ? 'inline-start' : undefined}
-            aria-hidden="true"
-          />
+          <Trash2 data-icon="inline-start" aria-hidden="true" />
           {compact && 'Excluir'}
         </Button>
       </AlertDialogTrigger>
@@ -103,23 +101,24 @@ export function DeleteInstructionDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         {feedback && (
-          <div>
-            <p
-              className="text-destructive text-sm"
-              role={feedback.neutral ? 'status' : 'alert'}
-            >
-              {feedback.text}
-            </p>
-            {mutation.error?.status === 404 && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => void refreshList()}
-              >
-                Atualizar lista
-              </Button>
-            )}
-          </div>
+          <Alert
+            variant={feedback.neutral ? 'default' : 'destructive'}
+            role={feedback.neutral ? 'status' : 'alert'}
+          >
+            <AlertDescription>
+              <p>{feedback.text}</p>
+              {mutation.error?.status === 404 && (
+                <Button
+                  className="mt-2"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void refreshList()}
+                >
+                  Atualizar lista
+                </Button>
+              )}
+            </AlertDescription>
+          </Alert>
         )}
         <AlertDialogFooter>
           <AlertDialogCancel disabled={mutation.isPending}>

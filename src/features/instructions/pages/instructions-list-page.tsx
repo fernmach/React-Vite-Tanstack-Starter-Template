@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Plus } from 'lucide-react'
 
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { isApiCancellation, normalizeApiError } from '@/lib/api-error'
 import { instructionQueryErrorCopy } from '../model/instruction-error-copy'
@@ -92,28 +93,31 @@ export function InstructionsListPage() {
         {announcement}
       </p>
       {visibleAnnouncement && (
-        <p className="border-border mt-4 rounded-sm border p-3" role="status">
-          {announcement}
-        </p>
+        <Alert className="mt-4" variant="destructive" role="alert">
+          <AlertDescription>{announcement}</AlertDescription>
+        </Alert>
       )}
       <section aria-label="Lista de instruções" className="mt-4">
         {refreshError && (
-          <div
-            className="border-destructive bg-card mb-4 rounded-sm border p-4"
+          <Alert
+            className="mb-4"
+            variant={refreshError.status === 401 ? 'default' : 'destructive'}
             role={refreshError.status === 401 ? 'status' : 'alert'}
           >
-            <p>
+            <AlertTitle>
               {instructionQueryErrorCopy(refreshError)} Os resultados anteriores
               continuam disponíveis.
-            </p>
-            <Button
-              className="mt-2"
-              size="sm"
-              onClick={() => void instructionsQuery.refetch()}
-            >
-              Atualizar lista
-            </Button>
-          </div>
+            </AlertTitle>
+            <AlertDescription>
+              <Button
+                className="mt-2"
+                size="sm"
+                onClick={() => void instructionsQuery.refetch()}
+              >
+                Atualizar lista
+              </Button>
+            </AlertDescription>
+          </Alert>
         )}
         <InstructionsResults
           loading={loading}

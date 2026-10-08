@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import userEvent from '@testing-library/user-event'
 import { ApiError } from '@/lib/api-error'
 import { render, screen, within } from '@/test/render'
 import { InstructionsResults } from './instructions-results'
@@ -38,9 +39,14 @@ describe('InstructionsResults', () => {
     expect(
       within(table).getByRole('columnheader', { name: 'Código de MPV' }),
     ).toBeVisible()
-    expect(
-      within(table).getByRole('link', { name: 'Editar instrução MPV-001' }),
-    ).toHaveAttribute('href', '/instrucoes/stable-1/editar')
+    const editAction = within(table).getByRole('link', {
+      name: 'Editar instrução MPV-001',
+    })
+    expect(editAction).toHaveAttribute('href', '/instrucoes/stable-1/editar')
+    expect(editAction.querySelector('svg')).toHaveAttribute(
+      'data-icon',
+      'inline-start',
+    )
     expect(
       within(table).getByRole('switch', {
         name: 'Desativar instrução MPV-001',
@@ -48,19 +54,47 @@ describe('InstructionsResults', () => {
     ).toBeChecked()
   })
 
+  it('renders an accessible loading status with visual skeletons', () => {
+    const { container } = render(
+      <InstructionsResults
+        loading
+        error={null}
+        result={null}
+        onRetry={vi.fn()}
+      />,
+      { auth: 'anonymous' },
+    )
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Carregando instruções…',
+    )
+    expect(container.querySelectorAll('.animate-pulse')).toHaveLength(3)
+    expect(container.querySelectorAll('[aria-hidden="true"]')).toHaveLength(3)
+  })
+
+  it('uses the Empty composition for no results without adding an action', () => {
+    const { container } = render(
+      <InstructionsResults
+        loading={false}
+        error={null}
+        result={{ ...result, items: [], total: 0, first: 0, last: 0 }}
+        onRetry={vi.fn()}
+      />,
+      { auth: 'anonymous' },
+    )
+
+    expect(container.querySelector('[data-slot="empty"]')).toBeVisible()
+    expect(container.querySelector('[data-slot="empty-header"]')).toBeVisible()
+    expect(
+      container.querySelector('[data-slot="empty-title"]'),
+    ).toHaveTextContent('Nenhuma instrução encontrada.')
+    expect(
+      container.querySelector('[data-slot="empty-description"]'),
+    ).toHaveTextContent('Revise o termo pesquisado ou limpe o filtro.')
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
+
   it.each([
-    {
-      props: { loading: true, error: null, result: null },
-      text: 'Carregando instruções…',
-    },
-    {
-      props: {
-        loading: false,
-        error: null,
-        result: { ...result, items: [], total: 0, first: 0, last: 0 },
-      },
-      text: 'Nenhuma instrução encontrada.',
-    },
     {
       props: {
         loading: false,
@@ -86,13 +120,40 @@ describe('InstructionsResults', () => {
       text: 'Não foi possível carregar as instruções. Tente novamente.',
     },
   ])('distingue o estado: $text', ({ props, text }) => {
-    render(<InstructionsResults {...props} onRetry={vi.fn()} />, {
-      auth: 'anonymous',
-    })
+    const { container } = render(
+      <InstructionsResults {...props} onRetry={vi.fn()} />,
+      {
+        auth: 'anonymous',
+      },
+    )
     expect(screen.getByText(text)).toBeVisible()
+    expect(screen.getByRole('alert')).toHaveClass('text-destructive')
+    expect(container.querySelector('h5')).toHaveTextContent(text)
     expect(
       screen.queryByText(/Private|socket|internal/),
     ).not.toBeInTheDocument()
+  })
+
+  it('keeps the retry callback on the Alert recovery action', async () => {
+    const user = userEvent.setup()
+    const onRetry = vi.fn()
+    render(
+      <InstructionsResults
+        loading={false}
+        error={
+          new ApiError({
+            kind: 'network',
+            message: 'Private transport detail',
+          })
+        }
+        result={null}
+        onRetry={onRetry}
+      />,
+      { auth: 'anonymous' },
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Tentar novamente' }))
+    expect(onRetry).toHaveBeenCalledOnce()
   })
 
   it('never renders a validated backend message or transport metadata', () => {
@@ -143,7 +204,10 @@ describe('InstructionsResults', () => {
       { auth: 'anonymous' },
     )
 
-    expect(screen.getByRole('status')).toHaveTextContent(
+    const status = screen.getByRole('status')
+    expect(status).toHaveTextContent('A lista de instruções está indisponível.')
+    expect(status).not.toHaveClass('text-destructive')
+    expect(status.querySelector('h5')).toHaveTextContent(
       'A lista de instruções está indisponível.',
     )
     expect(

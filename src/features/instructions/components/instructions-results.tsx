@@ -1,5 +1,13 @@
 import { Pencil } from 'lucide-react'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from '@/components/ui/empty'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
   TableBody,
@@ -32,33 +40,39 @@ export function InstructionsResults({
 
   if (loading)
     return (
-      <div
-        className="border-border bg-card rounded-sm border p-6"
-        role="status"
-      >
-        Carregando instruções…
+      <div className="border-border bg-card flex flex-col gap-4 rounded-sm border p-6">
+        <p className="sr-only" role="status">
+          Carregando instruções…
+        </p>
+        <Skeleton className="h-5 w-48" aria-hidden="true" />
+        <Skeleton className="h-4 w-full" aria-hidden="true" />
+        <Skeleton className="h-4 w-4/5" aria-hidden="true" />
       </div>
     )
   if (error)
     return (
-      <div
-        className="border-destructive bg-card rounded-sm border p-6"
+      <Alert
+        variant={error.status === 401 ? 'default' : 'destructive'}
         role={error.status === 401 ? 'status' : 'alert'}
       >
-        <p className="font-medium">{instructionQueryErrorCopy(error)}</p>
-        <Button className="mt-4" size="sm" onClick={onRetry}>
-          Tentar novamente
-        </Button>
-      </div>
+        <AlertTitle>{instructionQueryErrorCopy(error)}</AlertTitle>
+        <AlertDescription>
+          <Button className="mt-4" size="sm" onClick={onRetry}>
+            Tentar novamente
+          </Button>
+        </AlertDescription>
+      </Alert>
     )
   if (!result || result.total === 0)
     return (
-      <div className="border-border bg-card rounded-sm border p-6">
-        <p className="font-medium">Nenhuma instrução encontrada.</p>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Revise o termo pesquisado ou limpe o filtro.
-        </p>
-      </div>
+      <Empty className="border-border bg-card border">
+        <EmptyHeader>
+          <EmptyTitle>Nenhuma instrução encontrada.</EmptyTitle>
+          <EmptyDescription>
+            Revise o termo pesquisado ou limpe o filtro.
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     )
   return (
     <div className="border-border bg-card hidden rounded-sm border md:block">
@@ -102,7 +116,7 @@ export function InstructionsResults({
                     render={<a href={`/instrucoes/${item.id}/editar`} />}
                     aria-label={`Editar instrução ${item.code}`}
                   >
-                    <Pencil aria-hidden="true" />
+                    <Pencil data-icon="inline-start" aria-hidden="true" />
                   </Button>
                 </TableCell>
               )}

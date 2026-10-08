@@ -1,6 +1,12 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 
 export function InstructionsSearch({
@@ -35,39 +41,39 @@ export function InstructionsSearch({
   return (
     <form
       onSubmit={submit}
-      className="border-border bg-card mt-5 flex flex-col gap-3 rounded-sm border p-3 sm:flex-row"
+      className="border-border bg-card mt-5 rounded-sm border p-3"
       noValidate
     >
-      <div className="min-w-0 flex-1">
-        <label htmlFor="instructions-search" className="sr-only">
-          Pesquisar instruções
-        </label>
-        <Input
-          ref={inputRef}
-          id="instructions-search"
-          type="search"
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-          aria-invalid={Boolean(error)}
-          aria-describedby={error ? 'instructions-search-error' : undefined}
-        />
-        {error && (
-          <p
-            id="instructions-search-error"
-            className="text-destructive mt-1 text-sm"
-          >
-            {error}
-          </p>
-        )}
-      </div>
-      <Button type="submit" size="sm">
-        <Search data-icon="inline-start" aria-hidden="true" />
-        Pesquisar
-      </Button>
-      <Button type="button" size="sm" variant="outline" onClick={clear}>
-        <X data-icon="inline-start" aria-hidden="true" />
-        Limpar
-      </Button>
+      <FieldGroup className="gap-3 sm:flex-row sm:items-start">
+        <Field data-invalid={Boolean(error)} className="min-w-0 flex-1 gap-1">
+          <FieldLabel htmlFor="instructions-search" className="sr-only">
+            Pesquisar instruções
+          </FieldLabel>
+          <Input
+            ref={inputRef}
+            id="instructions-search"
+            type="search"
+            value={value}
+            onChange={(event) => {
+              setValue(event.target.value)
+              if (error) setError('')
+            }}
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? 'instructions-search-error' : undefined}
+          />
+          {error && (
+            <FieldError id="instructions-search-error">{error}</FieldError>
+          )}
+        </Field>
+        <Button type="submit" size="sm">
+          <Search data-icon="inline-start" aria-hidden="true" />
+          Pesquisar
+        </Button>
+        <Button type="button" size="sm" variant="outline" onClick={clear}>
+          <X data-icon="inline-start" aria-hidden="true" />
+          Limpar
+        </Button>
+      </FieldGroup>
     </form>
   )
 }

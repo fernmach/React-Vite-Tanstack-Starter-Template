@@ -69,7 +69,12 @@ describe('InstructionsListPage', () => {
     expect(await screen.findAllByText('MPV-001')).not.toHaveLength(0)
     fail = true
     await queryClient.invalidateQueries()
-    expect(await screen.findByRole('alert')).toHaveTextContent(
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent(
+      'Os resultados anteriores continuam disponíveis.',
+    )
+    expect(alert).toHaveClass('text-destructive')
+    expect(alert.querySelector('h5')).toHaveTextContent(
       'Os resultados anteriores continuam disponíveis.',
     )
     expect(screen.getAllByText('MPV-001')).not.toHaveLength(0)
@@ -124,9 +129,13 @@ describe('InstructionsListPage', () => {
       ),
     )
     render(<InstructionsListPage />, { auth: 'anonymous' })
-    expect(
-      await screen.findByText('A lista de instruções está indisponível.'),
-    ).toBeVisible()
+    const feedback = await screen.findByText(
+      'A lista de instruções está indisponível.',
+    )
+    expect(feedback).toBeVisible()
+    expect(feedback.closest('[role="status"]')).not.toHaveClass(
+      'text-destructive',
+    )
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(screen.queryByText('PRIVATE AUTH')).not.toBeInTheDocument()
   })
@@ -153,7 +162,9 @@ describe('InstructionsListPage', () => {
     )
 
     render(<InstructionsListPage />, { auth: 'anonymous' })
-    expect(screen.getByText('Carregando instruções…')).toBeVisible()
+    expect(
+      screen.getByText('Carregando instruções…').closest('[role="status"]'),
+    ).toBeInTheDocument()
 
     releaseInitial()
     expect(await screen.findAllByText('MPV-001')).not.toHaveLength(0)
