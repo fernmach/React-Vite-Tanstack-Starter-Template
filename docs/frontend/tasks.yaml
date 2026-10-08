@@ -1,0 +1,1440 @@
+schema_version: 2
+generator:
+  skill: frontend-tasks
+  workflow_version: 0.2.0-dev
+  generated_at: '2026-09-11T13:29:19Z'
+specification:
+  path: docs/frontend/spec.yaml
+  sha256: 9dea93ab1d6309b913104ad2a630fb4a2cfb3e38e211cb007910faa84d8cf3d0
+approval:
+  status: approved
+  approved_at: '2026-09-11T17:00:00Z'
+planning:
+  risks:
+  - id: unknown-service-contract
+    summary: 'The live instructions service contract, persistence, and error semantics
+      are not specified.
+
+      '
+    mitigation: 'Define a typed replaceable boundary and verify all behavior with
+      a local implementation until the live contract is supplied.
+
+      '
+    implementation_task_ids:
+    - define-data-boundary
+    - build-list-experience
+    - add-row-maintenance
+    spec_refs:
+    - service:instructions-service
+  open_questions: []
+verification_gate: &id001
+  kind: build
+  command: bun run verify
+  procedure: null
+stories:
+- id: access-public-instructions
+  actor: Visitante da área de instruções
+  outcome: Acessar uma área pública de instruções claramente identificada.
+  acceptance_criteria:
+  - '/instrucoes opens without authentication and shows the product identity, Homologação
+    text, active Instruções navigation, Portuguese page title, and Nova Instrução
+    action.
+
+    '
+  - 'The title action stacks on narrow screens; focus follows the visual order and
+    remains visible; text and controls meet WCAG 2.2 AA contrast.
+
+    '
+  spec_refs:
+  - /application/scope/2
+  - /experience/accessibility/0
+  - /experience/accessibility/6
+  - /experience/accessibility/7
+  - /experience/content/0
+  - /experience/content/1
+  - /experience/content/2
+  - /experience/keyboard/0
+  - /experience/responsive/0
+  - /experience/responsive/1
+  - /experience/visual_direction/0
+  - /experience/visual_direction/1
+  - /experience/visual_direction/5
+  - action:create-instruction-action
+  - component:application-shell-component
+  - component:button-primitive
+  - component:instructions-page-heading-component
+  - component:new-instruction-action-component
+  - component:primary-navigation-component
+  - component:utility-header-component
+  - layout:public-instructions-layout
+  - navigation:instructions-navigation-item
+  - navigation:primary-instructions-navigation
+  - page:instructions-list-page
+  - role:public-instructions-user-role
+  - section:instructions-page-heading-section
+- id: find-and-review-instructions
+  actor: Visitante da área de instruções
+  outcome: Pesquisar, percorrer e examinar instruções em qualquer tamanho de tela.
+  acceptance_criteria:
+  - 'Search trims a term of at most 200 characters, matches code or description, returns
+    to page one, supports Enter, and Clear restores all results and field focus.
+
+    '
+  - 'Pagination preserves the term, exposes current and unavailable controls, reports
+    the actual range and total, and announces result counts after search, clear, or
+    page changes.
+
+    '
+  - 'Desktop uses a compact semantic table with the approved columns and alternating
+    rows; below 768 px equivalent cards retain code, description, state, actions,
+    and expandable URL details.
+
+    '
+  - 'Loading, empty, validation, runtime-error, and offline states are distinguishable
+    and provide recoverable Portuguese guidance.
+
+    '
+  spec_refs:
+  - /application/scope/0
+  - /application/scope/1
+  - /experience/accessibility/1
+  - /experience/accessibility/4
+  - /experience/accessibility/5
+  - /experience/content/3
+  - /experience/content/4
+  - /experience/content/5
+  - /experience/keyboard/1
+  - /experience/responsive/2
+  - /experience/responsive/3
+  - /experience/responsive/4
+  - /experience/visual_direction/2
+  - /experience/visual_direction/3
+  - /experience/visual_direction/4
+  - action:change-instructions-page-action
+  - action:clear-instructions-search-action
+  - action:search-instructions-action
+  - component:input-primitive
+  - component:instructions-pagination-component
+  - component:instructions-search-toolbar-component
+  - component:instructions-table-component
+  - component:pagination-primitive
+  - component:table-primitive
+  - flow:find-instruction-flow
+  - form:instructions-search-form
+  - requirement:instruction-list-data
+  - requirement:instruction-pagination-data
+  - section:instructions-results-section
+  - section:instructions-search-section
+- id: begin-create-or-edit
+  actor: Visitante da área de instruções
+  outcome: Iniciar a criação ou edição da instrução escolhida.
+  acceptance_criteria:
+  - 'Nova Instrução starts the reserved creation destination, while each Editar action
+    carries the selected stable identifier and a row-specific accessible name.
+
+    '
+  - 'Both actions work from the keyboard without inventing fields for the unspecified
+    destination screens.
+
+    '
+  spec_refs:
+  - /experience/accessibility/2
+  - /experience/keyboard/2
+  - action:edit-instruction-action
+  - flow:maintain-instruction-flow
+- id: change-active-state
+  actor: Visitante da área de instruções
+  outcome: Alterar com segurança o estado ativo de uma instrução.
+  acceptance_criteria:
+  - 'A row-specific, keyboard-operable switch exposes its state without relying on
+    color, disables duplicate input while saving, and announces success.
+
+    '
+  - 'A failed save restores the previous value and announces recoverable Portuguese
+    guidance.
+
+    '
+  spec_refs:
+  - /application/scope/3
+  - /experience/accessibility/3
+  - /experience/accessibility/4
+  - /experience/keyboard/2
+  - action:toggle-instruction-active-action
+  - component:switch-primitive
+  - flow:change-instruction-state-flow
+- id: delete-instruction-safely
+  actor: Visitante da área de instruções
+  outcome: Confirmar ou cancelar o arquivamento reversível de uma instrução.
+  acceptance_criteria:
+  - 'A row-specific Excluir action opens a focus-contained dialog identifying code
+    and description and explaining the reversible effect.
+
+    '
+  - 'Cancel returns focus to its trigger; confirm prevents duplicates, archives the
+    record, refreshes counts, and announces success or a recoverable failure.
+
+    '
+  spec_refs:
+  - /application/scope/3
+  - /experience/accessibility/2
+  - /experience/accessibility/4
+  - /experience/keyboard/3
+  - action:confirm-instruction-deletion-action
+  - action:request-instruction-deletion-action
+  - component:alert-dialog-primitive
+  - component:delete-confirmation-component
+  - flow:delete-instruction-flow
+- id: supply-instruction-data
+  actor: Visitante da área de instruções
+  outcome: Receber resultados e concluir ações através de uma fronteira substituível.
+  acceptance_criteria:
+  - 'The boundary supplies stable identifier, code, description, URL, active state,
+    pagination metadata, and distinct success, runtime-error, and offline outcomes.
+
+    '
+  - 'Search, paging, active-state changes, and reversible archive remain testable
+    locally until the live contract is known.
+
+    '
+  spec_refs:
+  - service:instructions-service
+implementation_tasks:
+- id: install-list-primitives
+  title: Install official list primitives
+  purpose: Add the missing primitives through the configured shadcn registry.
+  kind: component-installation
+  status: completed
+  priority: critical
+  depends_on: []
+  story_ids:
+  - find-and-review-instructions
+  - change-active-state
+  - delete-instruction-safely
+  anticipated:
+    routes: []
+    files:
+    - src/components/ui/table.tsx
+    - src/components/ui/switch.tsx
+    - src/components/ui/pagination.tsx
+    - src/components/ui/alert-dialog.tsx
+    tests: []
+  component_dependencies:
+  - id: table-primitive
+    operation: install
+    registry_item: '@shadcn/table'
+    source: shadcn
+    availability: official-available
+  - id: switch-primitive
+    operation: install
+    registry_item: '@shadcn/switch'
+    source: shadcn
+    availability: official-available
+  - id: pagination-primitive
+    operation: install
+    registry_item: '@shadcn/pagination'
+    source: shadcn
+    availability: official-available
+  - id: alert-dialog-primitive
+    operation: install
+    registry_item: '@shadcn/alert-dialog'
+    source: shadcn
+    availability: official-available
+  verification_plan:
+  - *id001
+  verification:
+  - build
+  evidence:
+  - id: repository-gate
+    kind: build
+    status: passed
+    command: bun run verify
+    exit_code: 0
+    changed_files:
+    - package.json
+    - bun.lock
+    - src/components/ui/button.tsx
+    - src/components/ui/table.tsx
+    - src/components/ui/switch.tsx
+    - src/components/ui/pagination.tsx
+    - src/components/ui/alert-dialog.tsx
+    test_results:
+      passed: 10
+      failed: 0
+      skipped: 0
+    details: Full repository gate passed after installing official primitives and
+      preserving the existing Button render API.
+    recorded_at: '2026-09-11T18:53:18Z'
+  - id: acceptance-1
+    kind: command
+    status: passed
+    command: bunx --bun shadcn@latest add @shadcn/table @shadcn/switch @shadcn/pagination
+      @shadcn/alert-dialog --overwrite --yes
+    exit_code: 0
+    changed_files:
+    - src/components/ui/table.tsx
+    details: Official semantic table primitive installed for desktop result composition.
+    recorded_at: '2026-09-11T18:53:21Z'
+  - id: acceptance-2
+    kind: command
+    status: passed
+    command: bunx --bun shadcn@latest add @shadcn/table @shadcn/switch @shadcn/pagination
+      @shadcn/alert-dialog --overwrite --yes
+    exit_code: 0
+    changed_files:
+    - src/components/ui/pagination.tsx
+    details: Official pagination primitive installed with current-page semantics and
+      unavailable-control composition support.
+    recorded_at: '2026-09-11T18:53:26Z'
+  - id: acceptance-3
+    kind: command
+    status: passed
+    command: bunx --bun shadcn@latest add @shadcn/table @shadcn/switch @shadcn/pagination
+      @shadcn/alert-dialog --overwrite --yes
+    exit_code: 0
+    changed_files:
+    - src/components/ui/table.tsx
+    details: Semantic table building blocks are available for associated headers,
+      rows, and cells.
+    recorded_at: '2026-09-11T18:53:30Z'
+  - id: acceptance-4
+    kind: command
+    status: passed
+    command: bun run verify
+    exit_code: 0
+    details: Installed primitive set compiles and supports the planned distinguishable
+      result-state compositions.
+    recorded_at: '2026-09-11T18:53:34Z'
+  - id: acceptance-5
+    kind: command
+    status: passed
+    command: bunx --bun shadcn@latest add @shadcn/switch --overwrite --yes
+    exit_code: 0
+    changed_files:
+    - src/components/ui/switch.tsx
+    details: Keyboard-operable switch primitive installed with checked, unchecked,
+      focus, and disabled states.
+    recorded_at: '2026-09-11T18:53:38Z'
+  - id: acceptance-6
+    kind: command
+    status: passed
+    command: bun run verify
+    exit_code: 0
+    details: Switch primitive and dependencies compile for application-level rollback
+      and recovery behavior.
+    recorded_at: '2026-09-11T18:53:42Z'
+  - id: acceptance-7
+    kind: command
+    status: passed
+    command: bunx --bun shadcn@latest add @shadcn/alert-dialog --overwrite --yes
+    exit_code: 0
+    changed_files:
+    - src/components/ui/alert-dialog.tsx
+    details: Official alert-dialog primitive installed with focus containment, title,
+      description, cancel, and action composition.
+    recorded_at: '2026-09-11T18:53:46Z'
+  - id: acceptance-8
+    kind: command
+    status: passed
+    command: bun run verify
+    exit_code: 0
+    details: Alert-dialog and button compatibility compile for duplicate prevention,
+      focus return, and recoverable feedback composition.
+    recorded_at: '2026-09-11T18:53:50Z'
+  status_history:
+  - status: pending
+    at: '2026-09-11T13:29:19Z'
+    reason: Plan authored for review.
+  - status: ready
+    at: '2026-09-11T18:48:50Z'
+    reason: All dependencies are completed.
+  - status: in-progress
+    at: '2026-09-11T18:49:02Z'
+    reason: Implementation started.
+  - status: completed
+    at: '2026-09-11T18:54:01Z'
+    reason: Official list primitives installed, reviewed, compatibility-tested, and
+      repository gate passed.
+- id: define-data-boundary
+  title: Define the instructions data boundary
+  purpose: Isolate the UI from the unknown service and make every state deterministic.
+  kind: data-boundary
+  status: completed
+  priority: critical
+  depends_on: []
+  story_ids:
+  - supply-instruction-data
+  anticipated:
+    routes: []
+    files:
+    - src/features/instructions/instructions.types.ts
+    - src/features/instructions/instructions.service.ts
+    - src/features/instructions/instructions.fixture.ts
+    tests:
+    - src/features/instructions/instructions.service.test.ts
+  component_dependencies: []
+  verification_plan:
+  - kind: unit-test
+    command: null
+    procedure: 'Exercise normalized queries, pagination metadata, runtime and offline
+      failures, state rollback, and reversible archive behavior.
+
+      '
+  - *id001
+  verification:
+  - unit-test
+  - build
+  evidence:
+  - id: repository-gate
+    kind: build
+    status: passed
+    command: bun run verify
+    exit_code: 0
+    changed_files:
+    - src/features/instructions/instructions.types.ts
+    - src/features/instructions/instructions.fixture.ts
+    - src/features/instructions/instructions.service.ts
+    - src/features/instructions/instructions.service.test.ts
+    test_results:
+      passed: 17
+      failed: 0
+      skipped: 0
+    details: Full lint, typecheck, format, test, and production build gate passed.
+    recorded_at: '2026-09-11T18:57:35Z'
+  - id: unit-test
+    kind: test
+    status: passed
+    command: bunx vitest run src/features/instructions/instructions.service.test.ts
+      --reporter=verbose
+    exit_code: 0
+    test_results:
+      passed: 7
+      failed: 0
+      skipped: 0
+    details: Focused tests cover normalization, code and description search, pagination,
+      distinct runtime/offline failures, active-state updates, rollback, and archive.
+    recorded_at: '2026-09-11T18:57:39Z'
+  - id: acceptance-1
+    kind: test
+    status: passed
+    command: bunx vitest run src/features/instructions/instructions.service.test.ts
+      --reporter=verbose
+    exit_code: 0
+    changed_files:
+    - src/features/instructions/instructions.types.ts
+    - src/features/instructions/instructions.service.ts
+    details: Typed boundary supplies stable id, code, description, URL, active state,
+      pagination metadata, and distinct success/runtime/offline outcomes.
+    recorded_at: '2026-09-11T18:57:43Z'
+  - id: acceptance-2
+    kind: test
+    status: passed
+    command: bunx vitest run src/features/instructions/instructions.service.test.ts
+      --reporter=verbose
+    exit_code: 0
+    changed_files:
+    - src/features/instructions/instructions.fixture.ts
+    - src/features/instructions/instructions.service.test.ts
+    details: Local fixture and replaceable service keep search, paging, active-state
+      changes, rollback, and reversible archive deterministic and testable.
+    recorded_at: '2026-09-11T18:57:47Z'
+  status_history:
+  - status: pending
+    at: '2026-09-11T13:29:19Z'
+    reason: Plan authored for review.
+  - status: ready
+    at: '2026-09-11T18:48:50Z'
+    reason: All dependencies are completed.
+  - status: in-progress
+    at: '2026-09-11T18:54:21Z'
+    reason: Implementation started.
+  - status: completed
+    at: '2026-09-11T18:57:59Z'
+    reason: Typed local service boundary and deterministic tests passed the full repository
+      gate.
+- id: build-public-shell
+  title: Build the public instructions route and shell
+  purpose: Replace the starter navigation with the approved identity, route, and maintenance
+    handoffs.
+  kind: user-visible
+  status: completed
+  priority: high
+  depends_on: []
+  story_ids:
+  - access-public-instructions
+  - begin-create-or-edit
+  anticipated:
+    routes:
+    - /instrucoes
+    files:
+    - src/routes/__root.tsx
+    - src/routes/instrucoes.tsx
+    - src/components/mobile-nav.tsx
+    - src/components/instructions/instructions-shell.tsx
+    tests:
+    - src/components/instructions/instructions-shell.test.tsx
+  component_dependencies:
+  - id: button-primitive
+    operation: reuse
+    registry_item: '@shadcn/button'
+    source: shadcn
+    availability: installed
+  verification_plan:
+  - kind: unit-test
+    command: null
+    procedure: Verify public access, active navigation, Portuguese identity, responsive
+      heading, keyboard order, and stable create/edit handoffs.
+  - kind: browser
+    command: null
+    procedure: Exercise /instrucoes at wide and narrow viewports using pointer and
+      keyboard.
+  - kind: visual
+    command: null
+    procedure: Compare identity, hierarchy, spacing, environment text, and focus appearance
+      with the approved screenshot.
+  - *id001
+  verification:
+  - unit-test
+  - browser
+  - visual
+  - build
+  evidence:
+  - id: repository-gate
+    kind: build
+    status: passed
+    command: bun run verify
+    exit_code: 0
+    changed_files:
+    - index.html
+    - TODO.md
+    - src/index.css
+    - src/routes/__root.tsx
+    - src/routes/instrucoes.tsx
+    - src/components/mobile-nav.tsx
+    - src/components/instructions/instructions-shell.tsx
+    - src/components/instructions/instructions-shell.test.tsx
+    - src/routeTree.gen.ts
+    test_results:
+      passed: 19
+      failed: 0
+      skipped: 0
+    details: Full lint, typecheck, formatting, 19-test suite, and production build
+      passed.
+    recorded_at: '2026-09-14T21:02:13Z'
+  - id: unit-test
+    kind: test
+    status: passed
+    command: bunx vitest run src/components/instructions/instructions-shell.test.tsx
+      --reporter=verbose
+    exit_code: 0
+    test_results:
+      passed: 2
+      failed: 0
+      skipped: 0
+    details: Focused tests verify public identity, active navigation, Portuguese heading,
+      environment label, reserved create destination, and focusability.
+    recorded_at: '2026-09-14T21:02:19Z'
+  - id: browser
+    kind: browser
+    status: passed
+    url: http://127.0.0.1:5173/instrucoes
+    details: Verified in narrow in-app browser and wide Edge viewport. Keyboard focus
+      order was user menu, primary navigation, then Nova Instrução; all controls had
+      accessible names.
+    recorded_at: '2026-09-14T21:02:25Z'
+  - id: visual
+    kind: visual
+    status: passed
+    url: http://127.0.0.1:5173/instrucoes
+    details: 'Compared wide and narrow rendered layouts with the approved screenshot:
+      white and medium-blue identity, compact utility header, textual Homologação
+      badge, active navigation, hierarchy, responsive stacking, and visible focus
+      matched the specified direction.'
+    recorded_at: '2026-09-14T21:02:31Z'
+  - id: acceptance-1
+    kind: browser
+    status: passed
+    url: http://127.0.0.1:5173/instrucoes
+    details: Public route opened without authentication and displayed Grendene, Instruções
+      de Montagem de MPV, Homologação, active Instruções navigation, and Nova Instrução.
+    recorded_at: '2026-09-14T21:02:37Z'
+  - id: acceptance-2
+    kind: responsive
+    status: passed
+    url: http://127.0.0.1:5173/instrucoes
+    details: At narrow width the heading and create action stacked; keyboard order
+      and visible focus were verified, with semantic blue/white tokens retained independently
+      of the saved global theme.
+    recorded_at: '2026-09-14T21:02:43Z'
+  - id: acceptance-3
+    kind: test
+    status: passed
+    command: bunx vitest run src/components/instructions/instructions-shell.test.tsx
+      --reporter=verbose
+    exit_code: 0
+    details: Nova Instrução exposes the reserved /instrucoes/nova destination; stable
+      row-specific edit handoff remains scoped to the dependent list task.
+    recorded_at: '2026-09-14T21:02:49Z'
+  - id: acceptance-4
+    kind: browser
+    status: passed
+    url: http://127.0.0.1:5173/instrucoes
+    details: Creation action was reached by keyboard and visibly focused without inventing
+      any destination form fields.
+    recorded_at: '2026-09-14T21:02:55Z'
+  status_history:
+  - status: pending
+    at: '2026-09-11T13:29:19Z'
+    reason: Plan authored for review.
+  - status: ready
+    at: '2026-09-11T18:48:50Z'
+    reason: All dependencies are completed.
+  - status: in-progress
+    at: '2026-09-14T20:54:49Z'
+    reason: Implementation started.
+  - status: completed
+    at: '2026-09-14T21:03:07Z'
+    reason: Public instructions shell passed focused tests, responsive browser verification,
+      visual comparison, and the repository gate.
+- id: build-list-experience
+  title: Build searchable responsive results and pagination
+  purpose: Deliver all query states, equivalent desktop and mobile results, and retained-filter
+    pagination.
+  kind: user-visible
+  status: completed
+  priority: high
+  depends_on:
+  - install-list-primitives
+  - define-data-boundary
+  - build-public-shell
+  story_ids:
+  - find-and-review-instructions
+  anticipated:
+    routes:
+    - /instrucoes
+    files:
+    - src/routes/instrucoes.tsx
+    - src/features/instructions/instructions-search.tsx
+    - src/features/instructions/instructions-results.tsx
+    - src/features/instructions/instruction-card.tsx
+    - src/features/instructions/instructions-pagination.tsx
+    tests:
+    - src/features/instructions/instructions-search.test.tsx
+    - src/features/instructions/instructions-results.test.tsx
+    - src/features/instructions/instructions-pagination.test.tsx
+  component_dependencies:
+  - id: button-primitive
+    operation: reuse
+    registry_item: '@shadcn/button'
+    source: shadcn
+    availability: installed
+  - id: input-primitive
+    operation: reuse
+    registry_item: '@shadcn/input'
+    source: shadcn
+    availability: installed
+  - id: table-primitive
+    operation: compose
+    registry_item: '@shadcn/table'
+    source: shadcn
+    availability: official-available
+  - id: pagination-primitive
+    operation: compose
+    registry_item: '@shadcn/pagination'
+    source: shadcn
+    availability: official-available
+  verification_plan:
+  - kind: unit-test
+    command: null
+    procedure: 'Verify validation, Enter, clear-and-refocus, live announcements, all
+      page states, semantic table structure, mobile equivalence, and pagination boundaries.
+
+      '
+  - kind: browser
+    command: null
+    procedure: Exercise search, clear, results, cards, and pagination above and below
+      768 px with keyboard and pointer.
+  - kind: visual
+    command: null
+    procedure: Compare density, columns, striped rows, controls, count, pagination,
+      and responsive cards with the approved direction.
+  - *id001
+  verification:
+  - unit-test
+  - browser
+  - visual
+  - build
+  evidence:
+  - id: repository-gate
+    kind: build
+    status: passed
+    command: bun run verify
+    exit_code: 0
+    changed_files:
+    - src/routes/instrucoes.tsx
+    - src/features/instructions/instructions-search.tsx
+    - src/features/instructions/instructions-results.tsx
+    - src/features/instructions/instruction-card.tsx
+    - src/features/instructions/instructions-pagination.tsx
+    - src/features/instructions/instructions-search.test.tsx
+    - src/features/instructions/instructions-results.test.tsx
+    - src/features/instructions/instructions-pagination.test.tsx
+    - src/components/ui/pagination.tsx
+    test_results:
+      passed: 28
+      failed: 0
+      skipped: 0
+    details: Full lint, typecheck, formatting, 28-test suite, and production build
+      passed; only existing warning-level Fast Refresh notices remain.
+    recorded_at: '2026-09-14T21:12:39Z'
+  - id: unit-test
+    kind: test
+    status: passed
+    command: bunx vitest run src/features/instructions/instructions-search.test.tsx
+      src/features/instructions/instructions-results.test.tsx src/features/instructions/instructions-pagination.test.tsx
+      --reporter=verbose
+    exit_code: 0
+    test_results:
+      passed: 9
+      failed: 0
+      skipped: 0
+    details: Focused tests cover trimmed Enter search, 200-character validation, clear-and-refocus,
+      semantic results, loading/empty/runtime/offline states, range metadata, current
+      page, navigation, and unavailable controls.
+    recorded_at: '2026-09-14T21:12:41Z'
+  - id: browser
+    kind: browser
+    status: passed
+    url: http://127.0.0.1:5173/instrucoes
+    details: Exercised desktop and 390x844 mobile layouts. Verified trimmed Enter
+      search, one-result count, clear restoring 48 results and input focus, page-two
+      navigation, semantic desktop table, equivalent mobile cards, and stable edit
+      links.
+    recorded_at: '2026-09-14T21:12:43Z'
+  - id: visual
+    kind: visual
+    status: passed
+    url: http://127.0.0.1:5173/instrucoes
+    details: 'Inspected desktop and mobile screenshots: compact striped table, clear
+      column hierarchy, visible range and pagination controls, stacked search toolbar
+      and equivalent cards below 768 px matched the approved blue/white direction.'
+    recorded_at: '2026-09-14T21:12:44Z'
+  - id: acceptance-1
+    kind: test
+    status: passed
+    command: bunx vitest run src/features/instructions/instructions-search.test.tsx
+      --reporter=verbose
+    exit_code: 0
+    details: Search trims submitted terms, supports Enter, enforces 200 characters,
+      returns to page one through the route, and Clear restores all results plus field
+      focus.
+    recorded_at: '2026-09-14T21:12:46Z'
+  - id: acceptance-2
+    kind: browser
+    status: passed
+    url: http://127.0.0.1:5173/instrucoes
+    details: Pagination retains the active term in route state, exposes current and
+      unavailable controls, reports actual ranges and total, and updates the polite
+      result-count announcement after query and page changes.
+    recorded_at: '2026-09-14T21:12:48Z'
+  - id: acceptance-3
+    kind: responsive
+    status: passed
+    url: http://127.0.0.1:5173/instrucoes
+    details: Desktop renders a semantic striped table with approved columns; at 390
+      px the table is replaced by equivalent cards retaining code, description, text
+      state, row actions, and expandable URL details.
+    recorded_at: '2026-09-14T21:12:49Z'
+  - id: acceptance-4
+    kind: test
+    status: passed
+    command: bunx vitest run src/features/instructions/instructions-results.test.tsx
+      src/features/instructions/instructions-search.test.tsx --reporter=verbose
+    exit_code: 0
+    details: Loading, empty, validation, runtime-error, and offline states are distinct
+      and provide recoverable Portuguese guidance, including retry for service failures.
+    recorded_at: '2026-09-14T21:12:51Z'
+  status_history:
+  - status: pending
+    at: '2026-09-11T13:29:19Z'
+    reason: Plan authored for review.
+  - status: ready
+    at: '2026-09-14T21:03:09Z'
+    reason: All dependencies are completed.
+  - status: in-progress
+    at: '2026-09-14T21:03:31Z'
+    reason: Implementation started.
+  - status: completed
+    at: '2026-09-14T21:13:00Z'
+    reason: Searchable responsive instructions list passed focused tests, desktop/mobile
+      browser verification, visual review, and the repository gate.
+- id: add-row-maintenance
+  title: Add active-state and reversible-delete actions
+  purpose: Complete safe row maintenance with optimistic feedback, confirmation, focus
+    control, and recovery.
+  kind: user-visible
+  status: completed
+  priority: high
+  depends_on:
+  - build-list-experience
+  story_ids:
+  - change-active-state
+  - delete-instruction-safely
+  anticipated:
+    routes:
+    - /instrucoes
+    files:
+    - src/features/instructions/instruction-active-switch.tsx
+    - src/features/instructions/delete-instruction-dialog.tsx
+    - src/features/instructions/instructions-results.tsx
+    tests:
+    - src/features/instructions/instruction-active-switch.test.tsx
+    - src/features/instructions/delete-instruction-dialog.test.tsx
+  component_dependencies:
+  - id: switch-primitive
+    operation: compose
+    registry_item: '@shadcn/switch'
+    source: shadcn
+    availability: official-available
+  - id: alert-dialog-primitive
+    operation: compose
+    registry_item: '@shadcn/alert-dialog'
+    source: shadcn
+    availability: official-available
+  verification_plan:
+  - kind: unit-test
+    command: null
+    procedure: 'Verify row-specific labels, optimistic success and rollback, dialog
+      identity, focus trap and return, duplicate prevention, refreshed totals, and
+      live announcements.
+
+      '
+  - kind: browser
+    command: null
+    procedure: Exercise toggling, cancel, confirm, latency, and failure using keyboard
+      and pointer in desktop and mobile layouts.
+  - kind: visual
+    command: null
+    procedure: Inspect switch and dialog states for non-color cues, contrast, hierarchy,
+      and visible focus.
+  - *id001
+  verification:
+  - unit-test
+  - browser
+  - visual
+  - build
+  evidence:
+  - id: acceptance-1
+    kind: browser
+    status: passed
+    url: http://127.0.0.1:5173/instrucoes
+    details: Renewed browser exercise confirmed the row-specific switch has an accessible
+      action, visible Ativo/Inativo text, disabled saving behavior, duplicate-input
+      protection, and a Portuguese polite success announcement.
+    recorded_at: '2026-09-16T14:13:21Z'
+  - id: acceptance-2
+    kind: test
+    status: passed
+    command: bunx vitest run src/features/instructions/instruction-active-switch.test.tsx
+    exit_code: 0
+    details: A failed mock-service save restores the prior checked value and announces
+      recoverable Portuguese guidance.
+    recorded_at: '2026-09-16T14:13:22Z'
+  - id: acceptance-3
+    kind: browser
+    status: passed
+    url: http://127.0.0.1:5173/instrucoes
+    details: Renewed browser exercise confirmed the row-specific Excluir action opens
+      a focus-contained alert dialog naming instruction 186681 and Montagem do conjunto
+      principal, with explicit reversible archive guidance.
+    recorded_at: '2026-09-16T14:13:23Z'
+  - id: acceptance-4
+    kind: test
+    status: passed
+    command: bunx vitest run src/features/instructions/delete-instruction-dialog.test.tsx
+    exit_code: 0
+    details: Focused tests verify cancel and focus return, single confirmation with
+      refreshed list totals, and recoverable archive failure while preserving the
+      row.
+    recorded_at: '2026-09-16T14:13:24Z'
+  - id: browser
+    kind: browser
+    status: passed
+    url: http://127.0.0.1:5173/instrucoes
+    details: 'Renewed in-app browser verification with mock service data: instruction
+      186681 toggled to Inativo and announced success. Its delete dialog identified
+      the code and description, explained reversible archive behavior, focused Cancelar,
+      and returned focus to the row trigger after cancellation. Destructive confirmation
+      remains covered by focused automated tests.'
+    recorded_at: '2026-09-16T14:13:19Z'
+  - id: repository-gate
+    kind: build
+    status: passed
+    command: bun run verify
+    exit_code: 0
+    test_results:
+      passed: 33
+      failed: 0
+      skipped: 0
+    details: 'Renewed full repository gate passed after reopening: lint, typecheck,
+      formatting check, 10 test files with 33 tests, and production build. Only three
+      warning-level Fast Refresh notices remain.'
+    recorded_at: '2026-09-16T14:13:17Z'
+  - id: unit-test
+    kind: test
+    status: passed
+    command: bunx vitest run src/features/instructions/instruction-active-switch.test.tsx
+      src/features/instructions/delete-instruction-dialog.test.tsx
+    exit_code: 0
+    test_results:
+      passed: 5
+      failed: 0
+      skipped: 0
+    details: Renewed focused tests verify successful active-state changes, rollback,
+      row-specific dialog identity, cancel focus return, duplicate-safe archive success,
+      refreshed totals, and recoverable archive failure.
+    recorded_at: '2026-09-16T14:13:18Z'
+  - id: visual
+    kind: visual
+    status: passed
+    url: http://127.0.0.1:5173/instrucoes
+    details: Renewed visual inspection confirmed visible Ativo/Inativo text, distinct
+      switch states, compact row actions, readable dialog identity and reversible-effect
+      guidance, dimmed backdrop, destructive hierarchy, and visible keyboard focus.
+    recorded_at: '2026-09-16T14:13:20Z'
+  status_history:
+  - status: pending
+    at: '2026-09-11T13:29:19Z'
+    reason: Plan authored for review.
+  - status: ready
+    at: '2026-09-14T21:13:01Z'
+    reason: All dependencies are completed.
+  - status: in-progress
+    at: '2026-09-14T21:14:11Z'
+    reason: Implementation started.
+  - status: completed
+    at: '2026-09-16T13:54:59Z'
+    reason: Active-state and reversible archive actions passed focused tests, browser
+      and visual verification, and the full repository gate.
+  - status: blocked
+    at: '2026-09-16T14:10:39.944321Z'
+    reason: 'Reopened: Authorized workflow reconciliation for verification-stale completion
+      after installing the receipt-capable executor.'
+  - status: ready
+    at: '2026-09-16T14:10:39.944321Z'
+    reason: 'Reopened: Authorized workflow reconciliation for verification-stale completion
+      after installing the receipt-capable executor.'
+  - status: in-progress
+    at: '2026-09-16T14:10:51.157435Z'
+    reason: Implementation started.
+  - status: completed
+    at: '2026-09-16T14:15:06.006971Z'
+    reason: Reopened task revalidated with renewed focused tests, browser and visual
+      evidence, and the full repository gate.
+specification_coverage:
+- spec_ref: /application/scope/0
+  disposition: covered
+  story_ids:
+  - find-and-review-instructions
+  reason: null
+- spec_ref: /application/scope/1
+  disposition: covered
+  story_ids:
+  - find-and-review-instructions
+  reason: null
+- spec_ref: /application/scope/2
+  disposition: covered
+  story_ids:
+  - access-public-instructions
+  reason: null
+- spec_ref: /application/scope/3
+  disposition: covered
+  story_ids:
+  - change-active-state
+  - delete-instruction-safely
+  reason: null
+- spec_ref: /experience/accessibility/0
+  disposition: covered
+  story_ids:
+  - access-public-instructions
+  reason: null
+- spec_ref: /experience/accessibility/1
+  disposition: covered
+  story_ids:
+  - find-and-review-instructions
+  reason: null
+- spec_ref: /experience/accessibility/2
+  disposition: covered
+  story_ids:
+  - begin-create-or-edit
+  - delete-instruction-safely
+  reason: null
+- spec_ref: /experience/accessibility/3
+  disposition: covered
+  story_ids:
+  - change-active-state
+  reason: null
+- spec_ref: /experience/accessibility/4
+  disposition: covered
+  story_ids:
+  - find-and-review-instructions
+  - change-active-state
+  - delete-instruction-safely
+  reason: null
+- spec_ref: /experience/accessibility/5
+  disposition: covered
+  story_ids:
+  - find-and-review-instructions
+  reason: null
+- spec_ref: /experience/accessibility/6
+  disposition: covered
+  story_ids:
+  - access-public-instructions
+  reason: null
+- spec_ref: /experience/accessibility/7
+  disposition: covered
+  story_ids:
+  - access-public-instructions
+  reason: null
+- spec_ref: /experience/content/0
+  disposition: covered
+  story_ids:
+  - access-public-instructions
+  reason: null
+- spec_ref: /experience/content/1
+  disposition: covered
+  story_ids:
+  - access-public-instructions
+  reason: null
+- spec_ref: /experience/content/2
+  disposition: covered
+  story_ids:
+  - access-public-instructions
+  reason: null
+- spec_ref: /experience/content/3
+  disposition: covered
+  story_ids:
+  - find-and-review-instructions
+  reason: null
+- spec_ref: /experience/content/4
+  disposition: covered
+  story_ids:
+  - find-and-review-instructions
+  reason: null
+- spec_ref: /experience/content/5
+  disposition: covered
+  story_ids:
+  - find-and-review-instructions
+  reason: null
+- spec_ref: /experience/keyboard/0
+  disposition: covered
+  story_ids:
+  - access-public-instructions
+  reason: null
+- spec_ref: /experience/keyboard/1
+  disposition: covered
+  story_ids:
+  - find-and-review-instructions
+  reason: null
+- spec_ref: /experience/keyboard/2
+  disposition: covered
+  story_ids:
+  - begin-create-or-edit
+  - change-active-state
+  reason: null
+- spec_ref: /experience/keyboard/3
+  disposition: covered
+  story_ids:
+  - delete-instruction-safely
+  reason: null
+- spec_ref: /experience/responsive/0
+  disposition: covered
+  story_ids:
+  - access-public-instructions
+  reason: null
+- spec_ref: /experience/responsive/1
+  disposition: covered
+  story_ids:
+  - access-public-instructions
+  reason: null
+- spec_ref: /experience/responsive/2
+  disposition: covered
+  story_ids:
+  - find-and-review-instructions
+  reason: null
+- spec_ref: /experience/responsive/3
+  disposition: covered
+  story_ids:
+  - find-and-review-instructions
+  reason: null
+- spec_ref: /experience/responsive/4
+  disposition: covered
+  story_ids:
+  - find-and-review-instructions
+  reason: null
+- spec_ref: /experience/visual_direction/0
+  disposition: covered
+  story_ids:
+  - access-public-instructions
+  reason: null
+- spec_ref: /experience/visual_direction/1
+  disposition: covered
+  story_ids:
+  - access-public-instructions
+  reason: null
+- spec_ref: /experience/visual_direction/2
+  disposition: covered
+  story_ids:
+  - find-and-review-instructions
+  reason: null
+- spec_ref: /experience/visual_direction/3
+  disposition: covered
+  story_ids:
+  - find-and-review-instructions
+  reason: null
+- spec_ref: /experience/visual_direction/4
+  disposition: covered
+  story_ids:
+  - find-and-review-instructions
+  reason: null
+- spec_ref: /experience/visual_direction/5
+  disposition: covered
+  story_ids:
+  - access-public-instructions
+  reason: null
+- spec_ref: action:change-instructions-page-action
+  disposition: covered
+  story_ids:
+  - find-and-review-instructions
+  reason: null
+- spec_ref: action:clear-instructions-search-action
+  disposition: covered
+  story_ids:
+  - find-and-review-instructions
+  reason: null
+- spec_ref: action:confirm-instruction-deletion-action
+  disposition: covered
+  story_ids:
+  - delete-instruction-safely
+  reason: null
+- spec_ref: action:create-instruction-action
+  disposition: covered
+  story_ids:
+  - access-public-instructions
+  reason: null
+- spec_ref: action:edit-instruction-action
+  disposition: covered
+  story_ids:
+  - begin-create-or-edit
+  reason: null
+- spec_ref: action:request-instruction-deletion-action
+  disposition: covered
+  story_ids:
+  - delete-instruction-safely
+  reason: null
+- spec_ref: action:search-instructions-action
+  disposition: covered
+  story_ids:
+  - find-and-review-instructions
+  reason: null
+- spec_ref: action:toggle-instruction-active-action
+  disposition: covered
+  story_ids:
+  - change-active-state
+  reason: null
+- spec_ref: component:alert-dialog-primitive
+  disposition: covered
+  story_ids:
+  - delete-instruction-safely
+  reason: null
+- spec_ref: component:application-shell-component
+  disposition: covered
+  story_ids:
+  - access-public-instructions
+  reason: null
+- spec_ref: component:button-primitive
+  disposition: covered
+  story_ids:
+  - access-public-instructions
+  reason: null
+- spec_ref: component:delete-confirmation-component
+  disposition: covered
+  story_ids:
+  - delete-instruction-safely
+  reason: null
+- spec_ref: component:input-primitive
+  disposition: covered
+  story_ids:
+  - find-and-review-instructions
+  reason: null
+- spec_ref: component:instructions-page-heading-component
+  disposition: covered
+  story_ids:
+  - access-public-instructions
+  reason: null
+- spec_ref: component:instructions-pagination-component
+  disposition: covered
+  story_ids:
+  - find-and-review-instructions
+  reason: null
+- spec_ref: component:instructions-search-toolbar-component
+  disposition: covered
+  story_ids:
+  - find-and-review-instructions
+  reason: null
+- spec_ref: component:instructions-table-component
+  disposition: covered
+  story_ids:
+  - find-and-review-instructions
+  reason: null
+- spec_ref: component:new-instruction-action-component
+  disposition: covered
+  story_ids:
+  - access-public-instructions
+  reason: null
+- spec_ref: component:pagination-primitive
+  disposition: covered
+  story_ids:
+  - find-and-review-instructions
+  reason: null
+- spec_ref: component:primary-navigation-component
+  disposition: covered
+  story_ids:
+  - access-public-instructions
+  reason: null
+- spec_ref: component:switch-primitive
+  disposition: covered
+  story_ids:
+  - change-active-state
+  reason: null
+- spec_ref: component:table-primitive
+  disposition: covered
+  story_ids:
+  - find-and-review-instructions
+  reason: null
+- spec_ref: component:utility-header-component
+  disposition: covered
+  story_ids:
+  - access-public-instructions
+  reason: null
+- spec_ref: flow:change-instruction-state-flow
+  disposition: covered
+  story_ids:
+  - change-active-state
+  reason: null
+- spec_ref: flow:delete-instruction-flow
+  disposition: covered
+  story_ids:
+  - delete-instruction-safely
+  reason: null
+- spec_ref: flow:find-instruction-flow
+  disposition: covered
+  story_ids:
+  - find-and-review-instructions
+  reason: null
+- spec_ref: flow:maintain-instruction-flow
+  disposition: covered
+  story_ids:
+  - begin-create-or-edit
+  reason: null
+- spec_ref: form:instructions-search-form
+  disposition: covered
+  story_ids:
+  - find-and-review-instructions
+  reason: null
+- spec_ref: layout:public-instructions-layout
+  disposition: covered
+  story_ids:
+  - access-public-instructions
+  reason: null
+- spec_ref: navigation:instructions-navigation-item
+  disposition: covered
+  story_ids:
+  - access-public-instructions
+  reason: null
+- spec_ref: navigation:primary-instructions-navigation
+  disposition: covered
+  story_ids:
+  - access-public-instructions
+  reason: null
+- spec_ref: page:instructions-list-page
+  disposition: covered
+  story_ids:
+  - access-public-instructions
+  reason: null
+- spec_ref: requirement:instruction-list-data
+  disposition: covered
+  story_ids:
+  - find-and-review-instructions
+  reason: null
+- spec_ref: requirement:instruction-pagination-data
+  disposition: covered
+  story_ids:
+  - find-and-review-instructions
+  reason: null
+- spec_ref: role:public-instructions-user-role
+  disposition: covered
+  story_ids:
+  - access-public-instructions
+  reason: null
+- spec_ref: section:instructions-page-heading-section
+  disposition: covered
+  story_ids:
+  - access-public-instructions
+  reason: null
+- spec_ref: section:instructions-results-section
+  disposition: covered
+  story_ids:
+  - find-and-review-instructions
+  reason: null
+- spec_ref: section:instructions-search-section
+  disposition: covered
+  story_ids:
+  - find-and-review-instructions
+  reason: null
+- spec_ref: service:instructions-service
+  disposition: covered
+  story_ids:
+  - supply-instruction-data
+  reason: null
+story_coverage:
+- story_id: access-public-instructions
+  disposition: covered
+  implementation_task_ids:
+  - build-public-shell
+  reason: null
+- story_id: find-and-review-instructions
+  disposition: covered
+  implementation_task_ids:
+  - install-list-primitives
+  - build-list-experience
+  reason: null
+- story_id: begin-create-or-edit
+  disposition: covered
+  implementation_task_ids:
+  - build-public-shell
+  reason: null
+- story_id: change-active-state
+  disposition: covered
+  implementation_task_ids:
+  - install-list-primitives
+  - add-row-maintenance
+  reason: null
+- story_id: delete-instruction-safely
+  disposition: covered
+  implementation_task_ids:
+  - install-list-primitives
+  - add-row-maintenance
+  reason: null
+- story_id: supply-instruction-data
+  disposition: covered
+  implementation_task_ids:
+  - define-data-boundary
+  reason: null
+extensions:
+  frontend-implement.evidence-history:
+  - task_id: add-row-maintenance
+    evidence:
+      id: acceptance-1
+      kind: browser
+      status: passed
+      url: http://127.0.0.1:5173/instrucoes
+      details: The row-specific switch exposes an accessible action and visible Ativo/Inativo
+        text, disables while saving, prevents duplicate input, and announces success
+        through the polite live region.
+      recorded_at: '2026-09-16T13:54:44Z'
+  - task_id: add-row-maintenance
+    evidence:
+      id: acceptance-2
+      kind: test
+      status: passed
+      command: bunx vitest run src/features/instructions/instruction-active-switch.test.tsx
+        --reporter=verbose
+      exit_code: 0
+      details: A failed mock-service save restores the previous checked value and
+        announces recoverable Portuguese guidance.
+      recorded_at: '2026-09-16T13:54:46Z'
+  - task_id: add-row-maintenance
+    evidence:
+      id: acceptance-3
+      kind: browser
+      status: passed
+      url: http://127.0.0.1:5173/instrucoes
+      details: The row-specific Excluir action opens a focus-contained alert dialog
+        that names instruction 186681, includes its description, and explains that
+        the archive is reversible.
+      recorded_at: '2026-09-16T13:54:47Z'
+  - task_id: add-row-maintenance
+    evidence:
+      id: acceptance-4
+      kind: test
+      status: passed
+      command: bunx vitest run src/features/instructions/delete-instruction-dialog.test.tsx
+        --reporter=verbose
+      exit_code: 0
+      details: Cancel returns focus to the trigger; confirmation disables duplicates,
+        archives through the mock boundary, refreshes the list/counts, announces success,
+        and retains a recoverable open dialog on failure.
+      recorded_at: '2026-09-16T13:54:49Z'
+  - task_id: add-row-maintenance
+    evidence:
+      id: browser
+      kind: browser
+      status: passed
+      url: http://127.0.0.1:5173/instrucoes
+      details: 'Verified the desktop route with mock data: keyboard-operable row switch
+        changed 186681 to Inativo and announced success; the row-specific archive
+        dialog identified code and description, focused Cancelar, contained focus,
+        and returned focus to its trigger after cancellation. Confirmation behavior
+        is covered by the focused service-backed tests.'
+      recorded_at: '2026-09-16T13:54:42Z'
+  - task_id: add-row-maintenance
+    evidence:
+      id: repository-gate
+      kind: build
+      status: passed
+      command: bun run verify
+      exit_code: 0
+      changed_files:
+      - TODO.md
+      - src/routes/instrucoes.tsx
+      - src/features/instructions/instruction-active-switch.tsx
+      - src/features/instructions/delete-instruction-dialog.tsx
+      - src/features/instructions/instruction-card.tsx
+      - src/features/instructions/instructions-results.tsx
+      - src/features/instructions/instruction-active-switch.test.tsx
+      - src/features/instructions/delete-instruction-dialog.test.tsx
+      - src/features/instructions/instructions-results.test.tsx
+      test_results:
+        passed: 33
+        failed: 0
+        skipped: 0
+      details: Full lint, typecheck, formatting, 33-test suite, and production build
+        passed; only three warning-level Fast Refresh notices remain.
+      recorded_at: '2026-09-16T13:54:39Z'
+  - task_id: add-row-maintenance
+    evidence:
+      id: unit-test
+      kind: test
+      status: passed
+      command: bunx vitest run src/features/instructions/instruction-active-switch.test.tsx
+        src/features/instructions/delete-instruction-dialog.test.tsx --reporter=verbose
+      exit_code: 0
+      test_results:
+        passed: 5
+        failed: 0
+        skipped: 0
+      details: Focused tests verify successful active-state changes, rollback, row-specific
+        dialog identity, cancel focus return, duplicate-safe archive success, list
+        refresh, and recoverable archive failure.
+      recorded_at: '2026-09-16T13:54:40Z'
+  - task_id: add-row-maintenance
+    evidence:
+      id: visual
+      kind: visual
+      status: passed
+      url: http://127.0.0.1:5173/instrucoes
+      details: Visual inspection confirmed text labels alongside switch state, distinct
+        checked and unchecked controls, compact row actions, dimmed modal backdrop,
+        clear destructive hierarchy, readable reversible-effect guidance, and visible
+        focus.
+      recorded_at: '2026-09-16T13:54:43Z'

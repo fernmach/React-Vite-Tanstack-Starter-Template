@@ -1,0 +1,81 @@
+schema_version: 1
+generator:
+  skill: 'frontend-setup'
+  workflow_version: '0.1.0-dev'
+  generated_at: '2026-09-11T13:15:45.014Z'
+project:
+  path: "C:\\git_dir\\frontend-skill-manual-test\\tasks-test"
+  status: 'ready'
+  template:
+    repository: 'https://github.com/whereissam/React-Vite-Tanstack-Starter-Template.git'
+    requested_ref: null
+    commit: '0eed56d9d0b3d04c355022148a3923621dfa5a64'
+    retained_remote:
+      name: 'origin'
+      url: 'https://github.com/whereissam/React-Vite-Tanstack-Starter-Template.git'
+environment:
+  operating_system: 'Microsoft Windows NT 10.0.19045.0'
+  architecture: 'x64'
+  bun_version: '1.4.2'
+  package_manager: 'bun'
+  runtimes:
+    powershell: '7.6.5'
+stack:
+  react: '^19.2.7'
+  vite: '^8.1.0'
+  tanstack_router: '^1.170.16'
+  tanstack_query: '^5.101.1'
+  tailwind: '^4.3.1'
+  testing:
+    - 'vitest'
+    - 'testing-library'
+  quality_tools:
+    - 'eslint'
+    - 'prettier'
+    - 'typescript'
+shadcn:
+  config_path: 'components.json'
+  style: 'new-york'
+  primitive_base: 'base-ui'
+  aliases:
+    components: '@/components'
+    utils: '@/lib/utils'
+    ui: '@/components/ui'
+    lib: '@/lib'
+    hooks: '@/hooks'
+  css_path: 'src/index.css'
+  icon_library: 'lucide'
+  installed_components:
+    - 'button'
+    - 'card'
+    - 'input'
+checks:
+  - id: 'dependency-install'
+    kind: 'command'
+    status: 'passed'
+    command: "C:\\Users\\DELL\\.bun\\bin\\bun.exe install --frozen-lockfile"
+    exit_code: 0
+    recorded_at: '2026-09-11T13:14:17.105Z'
+  - id: 'repository-validation'
+    kind: 'test'
+    status: 'passed'
+    command: "C:\\Users\\DELL\\.bun\\bin\\bun.exe run verify"
+    exit_code: 0
+    recorded_at: '2026-09-11T13:15:42.032Z'
+  - id: 'production-build'
+    kind: 'build'
+    status: 'passed'
+    command: "C:\\Users\\DELL\\.bun\\bin\\bun.exe run verify"
+    exit_code: 0
+    details: 'The compatible authoritative verify gate includes the production build.'
+    recorded_at: '2026-09-11T13:15:42.032Z'
+  - id: 'runtime-http'
+    kind: 'http'
+    status: 'passed'
+    url: 'http://127.0.0.1:5173/'
+    http_status: 200
+    details: 'Expected application root marker was present.'
+    recorded_at: '2026-09-11T13:15:44.506Z'
+warnings: []
+unresolved_prerequisites: []
+extensions: {}
