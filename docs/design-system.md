@@ -4,7 +4,7 @@ This project uses a shadcn-style semantic token system with a warm neutral palet
 
 ## Foundations
 
-- Stack: Tailwind CSS v4 + shadcn/ui + Base UI
+- Stack: Tailwind CSS v4 + shadcn/ui with Base UI and Radix primitives
 - Theme model: CSS variables in `src/index.css` with light/dark mode
 - Dark mode trigger: `.dark` class on `<html>`
 - Semantic-first styling: use tokens like `bg-background`, `text-foreground`, `bg-primary` instead of raw color values
@@ -72,6 +72,13 @@ Use `font-medium` for actionable labels and `font-semibold` for section headings
 
 ## Component Conventions
 
+### Primitive provenance
+
+- The repository is currently mixed rather than fully migrated to one primitive library.
+- `field.tsx`, `label.tsx`, and `separator.tsx` are official shadcn Radix-registry files. `Label` and `Separator` use `@radix-ui/react-label` and `@radix-ui/react-separator`; `Field` composes those primitives with semantic form layout and error helpers.
+- Existing components may still integrate Base UI. Confirm the component source and the shadcn CLI's current `base` result before using library-specific composition APIs.
+- The login form uses `FieldGroup`, `Field`, `FieldLabel`, and `FieldError`, with `data-invalid`/`aria-invalid` and `data-disabled`/`disabled` paired for accessible state.
+
 ### Buttons
 
 Source: `src/components/ui/button.tsx`
@@ -79,7 +86,7 @@ Source: `src/components/ui/button.tsx`
 - Use `variant`: `default | destructive | outline | secondary | ghost | link`
 - Use `size`: `default | sm | lg | icon`
 - Keep focus-visible ring enabled (`focus-visible:ring-ring`)
-- Prefer `asChild` when wrapping links or custom triggers
+- Use the composition API implemented by the component (`render` for Base UI, `asChild` for Radix); do not infer one project-wide API.
 
 ### Surfaces
 

@@ -56,6 +56,9 @@ describe('login page routing', () => {
       '/login?redirect=%2Finstrucoes%3Fpagina%3D2%23resultado-4',
     )
 
+    expect(
+      screen.getAllByRole('heading', { level: 1, name: 'Entrar' }),
+    ).toHaveLength(1)
     await loginAsEditor()
 
     await waitFor(() =>

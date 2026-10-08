@@ -45,6 +45,7 @@
   - [x] Add Vitest + Testing Library setup and `button.test.tsx`
   - [x] Update README, design-system docs, and add component instructions
 - [x] Add baseline shadcn components: `card` and `input` (with tests)
+- [x] Adopt the official shadcn `Field` composition for the login form, including accessible field errors and disabled/invalid states.
 - [x] Reconcile README — removed the "React Router DOM" mention (not a dependency; routing is TanStack Router)
 - [x] Add CI workflow (`.github/workflows/ci.yml`) running `lint`, `test`, and `build`
 - [x] AI-agent-ready upgrade ([spec](docs/superpowers/specs/2026-06-26-ai-agent-ready-starter-design.md))

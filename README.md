@@ -2,7 +2,7 @@
 
 # React · Vite · TanStack Starter
 
-A modern, type-safe React starter template — **Vite**, **TanStack Router & Query**, **TailwindCSS v4**, and **shadcn/ui** on **Base UI** primitives.
+A modern, type-safe React starter template — **Vite**, **TanStack Router & Query**, **TailwindCSS v4**, and **shadcn/ui** with **Base UI and Radix** primitives.
 
 [![CI](https://github.com/whereissam/React-Vite-Tanstack-Starter-Template/actions/workflows/ci.yml/badge.svg)](https://github.com/whereissam/React-Vite-Tanstack-Starter-Template/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](#license)
@@ -21,7 +21,7 @@ A modern, type-safe React starter template — **Vite**, **TanStack Router & Que
 - **React 19** — the latest React with modern features
 - **TypeScript** — strict, end-to-end type safety
 - **TailwindCSS v4** — utility-first styling via the new Vite plugin
-- **shadcn/ui** — beautiful, accessible components on **Base UI** primitives
+- **shadcn/ui** — accessible components with project-owned Base UI and Radix integrations
 - **TanStack Router** — type-safe, file-based routing
 - **TanStack Query** — data fetching, caching, and server state
 - **Vitest** — unit testing with Testing Library
@@ -137,20 +137,28 @@ ownership and recovery details.
 
 ### UI primitives
 
-This template ships with `button`, `card`, and `input` from **shadcn/ui**, built on **Base UI** primitives. Add more with the CLI — pass `--base base` so it installs the Base UI versions:
+The UI inventory currently includes `alert-dialog`, `button`, `card`, `field`,
+`input`, `label`, `pagination`, `separator`, `sonner`, `switch`, and `table`.
+The login form composes the official shadcn `Field` API with `Label` and
+`Separator`; these three files currently come from the official **Radix-backed**
+registry and use `@radix-ui/react-label` and `@radix-ui/react-separator` where a
+primitive is required.
+
+This is a mixed implementation rather than a completed migration of every
+component to one primitive library. Existing components still include Base UI
+integrations. The shadcn CLI currently resolves this project as `base: radix`.
+Confirm that metadata before adding or updating a component, and review the
+generated diff before applying it:
 
 ```bash
-bunx shadcn@latest add dialog --base base
-bunx shadcn@latest add dropdown-menu --base base
+bunx --bun shadcn@latest info --json
+bunx --bun shadcn@latest add dialog --dry-run
+bunx --bun shadcn@latest add dialog --diff dialog.tsx
 ```
 
-> **Migrating from Radix?** Base UI replaces the `asChild` prop with a `render` prop.
-> To change a component's underlying element, pass an element to `render`:
->
-> ```tsx
-> // Radix:    <Button asChild><a href="/">Home</a></Button>
-> // Base UI:  <Button render={<a href="/" />}>Home</Button>
-> ```
+Component APIs depend on their actual implementation: Radix composition uses
+`asChild`, while Base UI composition uses `render`. Check the component source
+before composing a custom trigger.
 
 ## Project Structure
 
@@ -197,7 +205,7 @@ tools/
 | **Routing**    | TanStack Router (file-based)                                 |
 | **Data**       | TanStack Query                                               |
 | **Styling**    | TailwindCSS v4, `class-variance-authority`, `tailwind-merge` |
-| **Components** | shadcn/ui on Base UI, Lucide icons                           |
+| **Components** | shadcn/ui with Base UI and Radix, Lucide icons               |
 | **Testing**    | Vitest, Testing Library                                      |
 | **Quality**    | ESLint, Prettier, lefthook, GitHub Actions CI, Dependabot    |
 

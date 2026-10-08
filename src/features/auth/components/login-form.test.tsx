@@ -48,17 +48,26 @@ describe('LoginForm', () => {
     render(<LoginFormHarness login={login} />)
 
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
-    expect(screen.getByText('Informe seu e-mail.')).toHaveAttribute(
-      'role',
-      'alert',
+    const email = screen.getByLabelText('E-mail')
+    const password = screen.getByLabelText('Senha')
+    const emailError = screen.getByText('Informe seu e-mail.')
+    const passwordError = screen.getByText('Informe sua senha.')
+
+    expect(emailError).toHaveAttribute('role', 'alert')
+    expect(passwordError).toHaveAttribute('role', 'alert')
+    expect(email).toHaveAttribute('aria-describedby', emailError.id)
+    expect(password).toHaveAttribute('aria-describedby', passwordError.id)
+    expect(email.closest('[data-slot="field"]')).toHaveAttribute(
+      'data-invalid',
+      'true',
     )
-    expect(screen.getByText('Informe sua senha.')).toHaveAttribute(
-      'role',
-      'alert',
+    expect(password.closest('[data-slot="field"]')).toHaveAttribute(
+      'data-invalid',
+      'true',
     )
 
-    await user.type(screen.getByLabelText('E-mail'), 'email-invalido')
-    await user.type(screen.getByLabelText('Senha'), 'senha{Enter}')
+    await user.type(email, 'email-invalido')
+    await user.type(password, 'senha{Enter}')
     expect(screen.getByText('Informe um e-mail válido.')).toBeVisible()
 
     fireEvent.change(screen.getByLabelText('E-mail'), {
@@ -74,6 +83,27 @@ describe('LoginForm', () => {
     expect(login).not.toHaveBeenCalled()
   })
 
+  it('clears an existing field error when that field is edited', async () => {
+    const user = userEvent.setup()
+    render(<LoginFormHarness />)
+
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+    const email = screen.getByLabelText('E-mail')
+    const password = screen.getByLabelText('Senha')
+
+    expect(email).toHaveAttribute('aria-invalid', 'true')
+    expect(password).toHaveAttribute('aria-invalid', 'true')
+
+    await user.type(email, 'e')
+
+    expect(email).not.toHaveAttribute('aria-invalid')
+    expect(email).not.toHaveAttribute('aria-describedby')
+    expect(email.closest('[data-slot="field"]')).not.toHaveAttribute(
+      'data-invalid',
+    )
+    expect(password).toHaveAttribute('aria-invalid', 'true')
+  })
+
   it('submits controlled credentials from the keyboard', async () => {
     const user = userEvent.setup()
     const login = vi.fn(async () => AUTH_TEST_ACCOUNTS.EDITOR.user)
@@ -85,7 +115,7 @@ describe('LoginForm', () => {
     expect(email).toHaveAttribute('autocomplete', 'email')
     expect(password).toHaveAttribute('autocomplete', 'current-password')
 
-    await user.type(email, 'editor@example.com')
+    await user.type(email, '  editor@example.com  ')
     await user.type(password, 'senha-segura{Enter}')
 
     expect(login).toHaveBeenCalledWith({
@@ -116,6 +146,22 @@ describe('LoginForm', () => {
     expect(document.body).not.toHaveTextContent('SECRET')
   })
 
+  it('sanitizes generic API failures without exposing backend details', async () => {
+    const user = userEvent.setup()
+    const login = vi.fn(async () => {
+      throw new Error('SECRET infrastructure detail')
+    })
+    render(<LoginFormHarness login={login} />)
+
+    await user.type(screen.getByLabelText('E-mail'), 'editor@example.com')
+    await user.type(screen.getByLabelText('Senha'), 'senha-segura{Enter}')
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Não foi possível entrar. Tente novamente.')
+    expect(alert).toHaveAttribute('aria-live', 'assertive')
+    expect(document.body).not.toHaveTextContent('SECRET')
+  })
+
   it('disables controls and announces submission progress', async () => {
     const user = userEvent.setup()
     const login = vi.fn(() => new Promise<never>(() => undefined))
@@ -126,6 +172,17 @@ describe('LoginForm', () => {
 
     expect(screen.getByRole('button', { name: 'Entrando…' })).toBeDisabled()
     expect(screen.getByRole('status')).toHaveTextContent('Entrando…')
-    expect(screen.getByLabelText('E-mail')).toBeDisabled()
+    const email = screen.getByLabelText('E-mail')
+    const password = screen.getByLabelText('Senha')
+    expect(email).toBeDisabled()
+    expect(password).toBeDisabled()
+    expect(email.closest('[data-slot="field"]')).toHaveAttribute(
+      'data-disabled',
+      'true',
+    )
+    expect(password.closest('[data-slot="field"]')).toHaveAttribute(
+      'data-disabled',
+      'true',
+    )
   })
 })
