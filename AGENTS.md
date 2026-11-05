@@ -123,6 +123,15 @@ or callback fails; report and present that follow-up failure separately. Add
 focused tests for validation, cancellation, feedback ownership, reporting, and
 cache/recovery behavior relevant to each new operation.
 
+## Authentication and Authorization (Mandatory)
+
+Follow [`docs/architecture/authentication.md`](docs/architecture/authentication.md)
+for the cookie-JWT, CSRF, session, and authorization contract. Authentication is
+a cross-cutting shared module under `src/lib/auth`; it must preserve the shared
+layer dependency direction and use the single validated API client. Browser
+code must never read or persist access or refresh tokens. Client permission
+checks improve the interface but never replace backend authorization.
+
 ## Tooling Rules
 
 - ALWAYS use `bun` instead of `npm` or `yarn` for TypeScript/JavaScript.

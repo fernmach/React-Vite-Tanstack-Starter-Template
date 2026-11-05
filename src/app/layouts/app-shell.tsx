@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
-import { ChevronDown } from 'lucide-react'
 
+import { AuthControls } from './auth-controls'
 import { AppMobileNav } from './mobile-nav'
 
 interface AppShellProps {
@@ -25,14 +25,9 @@ export function AppShell({ children }: AppShellProps) {
                 Homologação
               </span>
             </div>
-            <button
-              type="button"
-              className="text-primary hidden items-center gap-1 rounded-sm text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-current sm:flex"
-              aria-label="Abrir menu de Fernando Machado"
-            >
-              <span className="max-w-40 truncate">Fernando Machado</span>
-              <ChevronDown aria-hidden="true" className="size-4" />
-            </button>
+            <div className="ml-auto">
+              <AuthControls />
+            </div>
             <AppMobileNav />
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Plus } from 'lucide-react'
 
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { isApiCancellation, normalizeApiError } from '@/lib/api-error'
 import { instructionQueryErrorCopy } from '../model/instruction-error-copy'
@@ -9,10 +10,12 @@ import { InstructionCard } from '../components/instruction-card'
 import { InstructionsPagination } from '../components/instructions-pagination'
 import { InstructionsResults } from '../components/instructions-results'
 import { InstructionsSearch } from '../components/instructions-search'
+import { useInstructionPermissions } from '../components/use-instruction-permissions'
 
 const DEFAULT_PAGE_SIZE = 20
 
 export function InstructionsListPage() {
+  const { canCreate } = useInstructionPermissions()
   const [term, setTerm] = useState('')
   const [page, setPage] = useState(1)
   const [announcement, setAnnouncement] = useState('')
@@ -60,14 +63,16 @@ export function InstructionsListPage() {
         <h1 className="text-primary text-2xl font-semibold tracking-tight">
           Instruções de Montagem de MPV
         </h1>
-        <Button
-          variant="link"
-          render={<a href="/instrucoes/nova" />}
-          className="self-start sm:self-auto"
-        >
-          <Plus data-icon="inline-start" aria-hidden="true" />
-          Nova Instrução
-        </Button>
+        {canCreate && (
+          <Button
+            variant="link"
+            render={<a href="/instrucoes/nova" />}
+            className="self-start sm:self-auto"
+          >
+            <Plus data-icon="inline-start" aria-hidden="true" />
+            Nova Instrução
+          </Button>
+        )}
       </div>
       <InstructionsSearch
         term={term}
@@ -88,28 +93,31 @@ export function InstructionsListPage() {
         {announcement}
       </p>
       {visibleAnnouncement && (
-        <p className="border-border mt-4 rounded-sm border p-3" role="status">
-          {announcement}
-        </p>
+        <Alert className="mt-4" variant="destructive" role="alert">
+          <AlertDescription>{announcement}</AlertDescription>
+        </Alert>
       )}
       <section aria-label="Lista de instruções" className="mt-4">
         {refreshError && (
-          <div
-            className="border-destructive bg-card mb-4 rounded-sm border p-4"
+          <Alert
+            className="mb-4"
+            variant={refreshError.status === 401 ? 'default' : 'destructive'}
             role={refreshError.status === 401 ? 'status' : 'alert'}
           >
-            <p>
+            <AlertTitle>
               {instructionQueryErrorCopy(refreshError)} Os resultados anteriores
               continuam disponíveis.
-            </p>
-            <Button
-              className="mt-2"
-              size="sm"
-              onClick={() => void instructionsQuery.refetch()}
-            >
-              Atualizar lista
-            </Button>
-          </div>
+            </AlertTitle>
+            <AlertDescription>
+              <Button
+                className="mt-2"
+                size="sm"
+                onClick={() => void instructionsQuery.refetch()}
+              >
+                Atualizar lista
+              </Button>
+            </AlertDescription>
+          </Alert>
         )}
         <InstructionsResults
           loading={loading}

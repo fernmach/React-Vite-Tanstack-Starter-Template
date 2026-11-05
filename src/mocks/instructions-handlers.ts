@@ -2,7 +2,13 @@ import { http, HttpResponse } from 'msw'
 import { z } from 'zod'
 import { env } from '@/config/env'
 import type { InstructionPage } from '@/features/instructions/model/instruction'
-import { readInstructions, updateInstruction } from './instructions-store'
+import type { Permission } from '@/lib/auth/model'
+import { authorizeMockPermission } from './auth-store'
+import {
+  createInstruction,
+  readInstructions,
+  updateInstruction,
+} from './instructions-store'
 
 const DEFAULT_PAGE = 1
 const DEFAULT_PAGE_SIZE = 20
@@ -11,7 +17,24 @@ const MAX_TERM_LENGTH = 200
 const patchBodySchema = z.union([
   z.object({ active: z.boolean() }).strict(),
   z.object({ archived: z.literal(true) }).strict(),
+  z
+    .object({
+      code: z.string().trim().min(1).optional(),
+      description: z.string().trim().min(1).optional(),
+      url: z.url().optional(),
+    })
+    .strict()
+    .refine((body) => Object.keys(body).length > 0),
 ])
+
+const createBodySchema = z
+  .object({
+    code: z.string().trim().min(1),
+    description: z.string().trim().min(1),
+    url: z.url(),
+    active: z.boolean(),
+  })
+  .strict()
 
 const apiBaseUrl = env.API_URL.replace(/\/$/, '')
 
@@ -19,6 +42,23 @@ export const instructionsUrl = `*${apiBaseUrl}/instructions`
 
 function errorResponse(status: number, message: string, code: string) {
   return HttpResponse.json({ message, code }, { status })
+}
+
+function permissionError(permission: Permission) {
+  const authorization = authorizeMockPermission(permission)
+  if (authorization.allowed) return null
+
+  return authorization.status === 401
+    ? errorResponse(
+        401,
+        'Authentication is required for this operation.',
+        authorization.code,
+      )
+    : errorResponse(
+        403,
+        'Permission is required for this operation.',
+        authorization.code,
+      )
 }
 
 function parsePositiveInteger(
@@ -81,6 +121,34 @@ export const instructionsHandlers = [
     return HttpResponse.json(response)
   }),
 
+  http.post(instructionsUrl, async ({ request }) => {
+    const denied = permissionError('instructions:create')
+    if (denied) return denied
+
+    let body: unknown
+    try {
+      body = await request.json()
+    } catch {
+      return errorResponse(
+        400,
+        'Request body must describe a valid instruction.',
+        'INVALID_INSTRUCTION_BODY',
+      )
+    }
+
+    const parsedBody = createBodySchema.safeParse(body)
+    if (!parsedBody.success)
+      return errorResponse(
+        400,
+        'Request body must describe a valid instruction.',
+        'INVALID_INSTRUCTION_BODY',
+      )
+
+    return HttpResponse.json(createInstruction(parsedBody.data), {
+      status: 201,
+    })
+  }),
+
   http.patch(`${instructionsUrl}/:id`, async ({ params, request }) => {
     let body: unknown
     try {
@@ -101,6 +169,15 @@ export const instructionsHandlers = [
         'INVALID_PATCH_BODY',
       )
     }
+
+    const permission: Permission =
+      'active' in parsedBody.data
+        ? 'instructions:set-active'
+        : 'archived' in parsedBody.data
+          ? 'instructions:archive'
+          : 'instructions:update'
+    const denied = permissionError(permission)
+    if (denied) return denied
 
     const id = Array.isArray(params.id) ? params.id[0] : params.id
     const updated = id

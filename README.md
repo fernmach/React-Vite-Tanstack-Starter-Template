@@ -2,7 +2,7 @@
 
 # React · Vite · TanStack Starter
 
-A modern, type-safe React starter template — **Vite**, **TanStack Router & Query**, **TailwindCSS v4**, and **shadcn/ui** on **Base UI** primitives.
+A modern, type-safe React starter template — **Vite**, **TanStack Router & Query**, **TailwindCSS v4**, and **shadcn/ui** with **Base UI and Radix** primitives.
 
 [![CI](https://github.com/whereissam/React-Vite-Tanstack-Starter-Template/actions/workflows/ci.yml/badge.svg)](https://github.com/whereissam/React-Vite-Tanstack-Starter-Template/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](#license)
@@ -21,7 +21,7 @@ A modern, type-safe React starter template — **Vite**, **TanStack Router & Que
 - **React 19** — the latest React with modern features
 - **TypeScript** — strict, end-to-end type safety
 - **TailwindCSS v4** — utility-first styling via the new Vite plugin
-- **shadcn/ui** — beautiful, accessible components on **Base UI** primitives
+- **shadcn/ui** — accessible components with project-owned Base UI and Radix integrations
 - **TanStack Router** — type-safe, file-based routing
 - **TanStack Query** — data fetching, caching, and server state
 - **Vitest** — unit testing with Testing Library
@@ -73,6 +73,49 @@ Then open **[http://localhost:5173](http://localhost:5173)**.
 
 ## Components
 
+### Authentication contract
+
+Task-desk defines a project-owned cookie authentication boundary without an
+external auth client library. The implemented baseline includes a global
+TanStack Query-backed `AuthProvider`, validated session, login, refresh, and
+logout operations, and an MSW service for anonymous, editor, and administrator
+sessions. The provider owns the in-memory user and CSRF session cache, exposes
+generic role and permission checks, and removes protected query data on logout.
+The application coalesces concurrent 401s into one refresh, retains the current
+user while recovering, selectively refetches active protected queries after
+success, and signs out locally without erasing public cache data after failure.
+A future backend owns access and rotating refresh JWTs in secure HttpOnly
+cookies; browser code receives only the validated user and an in-memory CSRF
+token.
+
+The `/login` route now provides a controlled, validated email/password form,
+safe same-origin redirect restoration, and generic authentication and
+permission guards for future protected routes. The application shell reflects
+loading, recovery, anonymous, and authenticated states, and logout always
+clears local private state even if the transport request fails. Router devtools
+are loaded only in development.
+
+Instruction reads remain public. The instruction UI uses the provider's
+permission checks to show create, edit, and active-state controls to editors,
+add archive controls for administrators, and render active state as read-only
+text for anonymous visitors. The MSW API boundary separately enforces the same
+matrix and returns safe structured 401 or 403 failures; hiding a control is
+never treated as authorization. Failed mutations are not replayed during 401
+recovery, and 403 feedback remains distinct from session expiry. See the
+[authentication architecture](docs/architecture/authentication.md) for the
+contract and role matrix, and the
+[backend security acceptance checklist](docs/security/backend-acceptance-checklist.md)
+for an explicit split between frontend evidence and controls that require the
+future backend or a deployed real-browser environment.
+
+Task 7 adds a cross-feature release matrix for login, recovery, permission
+changes, revoked refresh, logout, cache hygiene, forbidden access, and mutation
+non-replay. Static regression tests block auth-sensitive browser persistence and
+untrusted HTML sinks. Every production build also scans emitted artifacts and
+fails if they contain the MSW worker/runtime, deterministic mock credentials or
+CSRF prefixes, or TanStack development tools. `bun audit` remains a separate,
+explicit release check because advisory data changes independently of source.
+
 ### Error containment and reporting
 
 Application and route failures show safe fallbacks with explicit retry, reload,
@@ -94,20 +137,35 @@ ownership and recovery details.
 
 ### UI primitives
 
-This template ships with `button`, `card`, and `input` from **shadcn/ui**, built on **Base UI** primitives. Add more with the CLI — pass `--base base` so it installs the Base UI versions:
+The UI inventory currently includes `alert`, `alert-dialog`, `badge`, `button`,
+`card`, `empty`, `field`, `input`, `label`, `pagination`, `separator`,
+`skeleton`, `sonner`, `switch`, and `table`. The login form composes the
+official shadcn `Field` API with `Label` and `Separator`; these three files
+currently come from the official **Radix-backed** registry and use
+`@radix-ui/react-label` and `@radix-ui/react-separator` where a primitive is
+required.
+
+Use `Alert` for inline feedback and retry surfaces, `Badge` for compact
+read-only status labels, `Empty` with its header/title/description composition
+for no-results states, and `Skeleton` for visual loading placeholders. Keep a
+separate screen-reader status message with skeletons, and give each failure a
+single feedback owner.
+
+This is a mixed implementation rather than a completed migration of every
+component to one primitive library. Existing components still include Base UI
+integrations. The shadcn CLI currently resolves this project as `base: radix`.
+Confirm that metadata before adding or updating a component, and review the
+generated diff before applying it:
 
 ```bash
-bunx shadcn@latest add dialog --base base
-bunx shadcn@latest add dropdown-menu --base base
+bunx --bun shadcn@latest info --json
+bunx --bun shadcn@latest add dialog --dry-run
+bunx --bun shadcn@latest add dialog --diff dialog.tsx
 ```
 
-> **Migrating from Radix?** Base UI replaces the `asChild` prop with a `render` prop.
-> To change a component's underlying element, pass an element to `render`:
->
-> ```tsx
-> // Radix:    <Button asChild><a href="/">Home</a></Button>
-> // Base UI:  <Button render={<a href="/" />}>Home</Button>
-> ```
+Component APIs depend on their actual implementation: Radix composition uses
+`asChild`, while Base UI composition uses `render`. Check the component source
+before composing a custom trigger.
 
 ## Project Structure
 
@@ -154,7 +212,7 @@ tools/
 | **Routing**    | TanStack Router (file-based)                                 |
 | **Data**       | TanStack Query                                               |
 | **Styling**    | TailwindCSS v4, `class-variance-authority`, `tailwind-merge` |
-| **Components** | shadcn/ui on Base UI, Lucide icons                           |
+| **Components** | shadcn/ui with Base UI and Radix, Lucide icons               |
 | **Testing**    | Vitest, Testing Library                                      |
 | **Quality**    | ESLint, Prettier, lefthook, GitHub Actions CI, Dependabot    |
 
@@ -194,8 +252,9 @@ when the build is in development mode and mocking is enabled. Tests start the
 Node server from `src/test/setup.ts`, fail on unhandled requests, and reset
 handlers and mock state after each test. Production never starts MSW, even if
 `VITE_ENABLE_API_MOCKING=true` is supplied accidentally. The production build
-also fails if an emitted chunk contains `src/mocks` or `msw`, and removes the
-development worker copied from `public/`.
+also fails if an emitted chunk contains `src/mocks`, MSW, or TanStack
+development-tool modules; removes the development worker copied from `public/`;
+and runs `bun run check:production` against emitted filenames and contents.
 
 Create an operation with all required options:
 

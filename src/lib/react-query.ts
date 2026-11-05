@@ -10,6 +10,8 @@ import { errorReporting } from './error-reporting'
 interface OperationMeta extends Record<string, unknown> {
   // Feature-owned, status-qualified codes for application-generated requests.
   requestContractErrors?: readonly { status: number; code: string }[]
+  // Auth recovery may selectively refetch or remove only protected server data.
+  requiresAuth?: boolean
 }
 
 declare module '@tanstack/react-query' {

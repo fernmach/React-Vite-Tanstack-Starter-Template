@@ -1,0 +1,76 @@
+schema_version: 2
+generator:
+  skill: frontend-workflow
+  workflow_version: 0.3.0-dev
+  generated_at: '2026-09-16T13:49:34Z'
+workflow_id: e10c549a-a43b-4c4b-bf0e-10056f2cde90
+revision: 4
+root: C:\git_dir\frontend-skill-manual-test\tasks-test
+scope:
+  mode: project
+  target: implement
+  allowed_stages:
+  - implement
+  selector:
+    mode: Task
+    value: add-row-maintenance
+    task_ids:
+    - add-row-maintenance
+  authorization_ref: User requested /frontend.workflow resume implementation on 2026-09-16.
+projection_version: 1
+artifacts:
+- kind: setup
+  path: docs/frontend/setup.yaml
+  validity: valid
+  schema_version: 1
+  sha256: 37f499a6f212ac3a41e9d2fd5a063d40c09815cdb88508aebcbfef965c81ec5e
+  projection: bc4069fed1d39621ff5d1146d0aa029290caf0e20d444ac9f69cf56b3db6a4e1
+  validated_at: '2026-09-16T14:15:27Z'
+- kind: spec
+  path: docs/frontend/spec.yaml
+  validity: valid
+  schema_version: 2
+  sha256: 9dea93ab1d6309b913104ad2a630fb4a2cfb3e38e211cb007910faa84d8cf3d0
+  projection: cf596548bb02ed6b5c8e75dfefd682b86fbc734ab2d65b19e37329b9d4b2efc7
+  validated_at: '2026-09-16T14:15:27Z'
+- kind: tasks
+  path: docs/frontend/tasks.yaml
+  validity: valid
+  schema_version: 2
+  sha256: 154c40bfc5606a1dd222bf36de39d21a8fb7820b43aa1a911bef7f11399f2225
+  projection: 09fcca859c00ae027a88bdd45c94e3e01bf7a8823ca23e3b6b30c3c30813fc22
+  validated_at: '2026-09-16T14:15:27Z'
+baselines:
+  setup: bc4069fed1d39621ff5d1146d0aa029290caf0e20d444ac9f69cf56b3db6a4e1
+  spec: null
+  tasks: 09fcca859c00ae027a88bdd45c94e3e01bf7a8823ca23e3b6b30c3c30813fc22
+  definitions:
+    install-list-primitives: f2b31facd16bcea276fedd9ac5449e8dbf790b38f88adaecd9762fe7b377635c
+    define-data-boundary: da6dc6317e1c2e0bafb8c0c8d3ff2160b123c68a82b3f5918ef39f79bb9eb98b
+    build-public-shell: 6269fac722af8b8c1ee05c1fae5e9f8eb4ba4e39933ea695856e791a94c2e670
+    build-list-experience: c1cbbaaeeeb9d521fc060f39d2ee0d78804aac6ba57234f3fc84db3c1d8a1e70
+    add-row-maintenance: a64849433484bcd18aa5bb543361d29cec87e147fb8e10bdebdb46f2461f63ed
+  proofs:
+    add-row-maintenance: 0561a8ead598a83b4e92fdda4c5d99c9b2ed088a76db8c29e625d565452f5ea4
+decisions: []
+pending_approvals: []
+blockers: []
+handoff: null
+setup_resume: null
+last_operation: 6012f9f5a09c5d642a12508e
+extensions: {}
+stages:
+  setup:
+    status: completed
+    reason: artifact-validated
+  spec:
+    status: completed
+    reason: artifact-validated
+  tasks:
+    status: completed
+    reason: artifact-validated
+  implement:
+    status: completed
+    reason: selected-work-verified
+current_stage: complete
+last_successful_stage: implement

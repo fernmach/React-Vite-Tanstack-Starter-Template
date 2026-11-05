@@ -25,7 +25,7 @@ describe('DeleteInstructionDialog', () => {
   it('closes after a confirmed archive even when refresh fails and reports the accurate outcome', async () => {
     const user = userEvent.setup()
     const announce = vi.fn()
-    render(<Harness onAnnounce={announce} />)
+    render(<Harness onAnnounce={announce} />, { auth: 'admin' })
     await user.click(
       await screen.findByRole('button', { name: 'Excluir instrução 186682' }),
     )
@@ -51,7 +51,7 @@ describe('DeleteInstructionDialog', () => {
 
   it('keeps a missing-record failure in the dialog with list recovery', async () => {
     const user = userEvent.setup()
-    render(<Harness onAnnounce={vi.fn()} />)
+    render(<Harness onAnnounce={vi.fn()} />, { auth: 'admin' })
     await user.click(
       await screen.findByRole('button', { name: 'Excluir instrução 186682' }),
     )
@@ -64,7 +64,10 @@ describe('DeleteInstructionDialog', () => {
       ),
     )
     await user.click(screen.getByRole('button', { name: 'Arquivar instrução' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent(
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Esta instrução não está mais disponível.')
+    expect(alert).toHaveClass('text-destructive')
+    expect(alert.querySelector('p')).toHaveTextContent(
       'Esta instrução não está mais disponível.',
     )
     expect(screen.getByRole('alertdialog')).toBeVisible()
@@ -75,10 +78,14 @@ describe('DeleteInstructionDialog', () => {
 
   it('identifies the record and returns focus when cancellation closes it', async () => {
     const user = userEvent.setup()
-    render(<Harness onAnnounce={vi.fn()} />)
+    render(<Harness onAnnounce={vi.fn()} />, { auth: 'admin' })
     const trigger = await screen.findByRole('button', {
       name: 'Excluir instrução 186682',
     })
+    expect(trigger.querySelector('svg')).toHaveAttribute(
+      'data-icon',
+      'inline-start',
+    )
 
     await user.click(trigger)
     expect(screen.getByRole('alertdialog')).toBeVisible()
@@ -91,7 +98,7 @@ describe('DeleteInstructionDialog', () => {
   it('closes after archive refetch removes the record and announces success', async () => {
     const user = userEvent.setup()
     const announce = vi.fn()
-    render(<Harness onAnnounce={announce} />)
+    render(<Harness onAnnounce={announce} />, { auth: 'admin' })
 
     await user.click(
       await screen.findByRole('button', {
@@ -114,7 +121,7 @@ describe('DeleteInstructionDialog', () => {
     const requestGate = new Promise<void>((resolve) => {
       releaseRequest = resolve
     })
-    render(<Harness onAnnounce={announce} />)
+    render(<Harness onAnnounce={announce} />, { auth: 'admin' })
     await user.click(
       await screen.findByRole('button', {
         name: 'Excluir instrução 186682',
@@ -140,5 +147,26 @@ describe('DeleteInstructionDialog', () => {
     expect(
       screen.getByRole('button', { name: 'Arquivar instrução' }),
     ).toBeEnabled()
+  })
+
+  it('keeps authentication feedback neutral inside the dialog', async () => {
+    const user = userEvent.setup()
+    render(<Harness onAnnounce={vi.fn()} />, { auth: 'admin' })
+    await user.click(
+      await screen.findByRole('button', { name: 'Excluir instrução 186682' }),
+    )
+    server.use(
+      http.patch(`${instructionsUrl}/*`, () =>
+        HttpResponse.json({ message: 'PRIVATE AUTH' }, { status: 401 }),
+      ),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Arquivar instrução' }))
+
+    const status = await screen.findByRole('status')
+    expect(status).toHaveTextContent('A operação está indisponível.')
+    expect(status).not.toHaveClass('text-destructive')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.queryByText('PRIVATE AUTH')).not.toBeInTheDocument()
   })
 })

@@ -2,6 +2,7 @@ import '@testing-library/jest-dom/vitest'
 import { afterAll, afterEach, beforeAll, vi } from 'vitest'
 import { cleanup } from '@testing-library/react'
 import { server } from '@/mocks/server'
+import { resetAuthStore } from '@/mocks/auth-store'
 import { resetInstructionsStore } from '@/mocks/instructions-store'
 
 Object.defineProperty(window, 'scrollTo', {
@@ -33,6 +34,7 @@ beforeAll(() => {
 afterEach(() => {
   cleanup()
   server.resetHandlers()
+  resetAuthStore()
   resetInstructionsStore()
 })
 

@@ -5,7 +5,7 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import prettier from 'eslint-config-prettier'
 
-const featureNames = ['instructions']
+const featureNames = ['auth', 'instructions']
 
 const productionSourceFiles = ['src/**/*.{ts,tsx}']
 const productionSourceIgnores = ['src/**/*.test.{ts,tsx}', 'src/test/**']
