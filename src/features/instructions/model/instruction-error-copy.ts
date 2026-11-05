@@ -21,6 +21,8 @@ export function instructionWriteErrorCopy(
   action: 'alterar' | 'arquivar',
 ): string {
   if (error.status === 401) return 'A operação está indisponível.'
+  if (error.status === 403)
+    return 'Você não tem permissão para realizar esta operação.'
   if (
     error.kind === 'network' ||
     (error.kind === 'validation' && error.validationPhase === 'response')

@@ -6,6 +6,7 @@ function copyInstruction(instruction: Instruction): Instruction {
 }
 
 let instructions = instructionMockRecords.map(copyInstruction)
+let createdInstructionSequence = 0
 
 export function readInstructions(): Instruction[] {
   return instructions.map(copyInstruction)
@@ -13,7 +14,9 @@ export function readInstructions(): Instruction[] {
 
 export function updateInstruction(
   id: string,
-  update: Pick<Instruction, 'active'> | Pick<Instruction, 'archived'>,
+  update: Partial<
+    Pick<Instruction, 'code' | 'description' | 'url' | 'active' | 'archived'>
+  >,
 ): Instruction | undefined {
   const index = instructions.findIndex(
     (instruction) => instruction.id === id && !instruction.archived,
@@ -26,6 +29,20 @@ export function updateInstruction(
   return copyInstruction(updated)
 }
 
+export function createInstruction(
+  input: Pick<Instruction, 'code' | 'description' | 'url' | 'active'>,
+): Instruction {
+  createdInstructionSequence += 1
+  const instruction: Instruction = {
+    ...input,
+    id: `instruction-created-${createdInstructionSequence}`,
+    archived: false,
+  }
+  instructions.push(instruction)
+  return copyInstruction(instruction)
+}
+
 export function resetInstructionsStore(): void {
   instructions = instructionMockRecords.map(copyInstruction)
+  createdInstructionSequence = 0
 }

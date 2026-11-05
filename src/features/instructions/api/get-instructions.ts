@@ -53,6 +53,7 @@ export function getInstructionsQueryOptions(input: GetInstructionsInput = {}) {
     queryFn: ({ signal }) => requestInstructions(normalized, signal),
     placeholderData: keepPreviousData,
     meta: {
+      requiresAuth: false,
       requestContractErrors: [{ status: 400, code: 'INVALID_PAGINATION' }],
     },
   })

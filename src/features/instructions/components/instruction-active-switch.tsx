@@ -1,10 +1,15 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Field, FieldLabel } from '@/components/ui/field'
 import { Switch } from '@/components/ui/switch'
 import { isApiCancellation } from '@/lib/api-error'
 import { useSetInstructionActive } from '../api/set-instruction-active'
 import { useRefreshInstructionLists } from '../api/use-refresh-instruction-lists'
 import { instructionWriteErrorCopy } from '../model/instruction-error-copy'
 import type { Instruction } from '../model/instruction'
+import { useInstructionPermissions } from './use-instruction-permissions'
 
 export function InstructionActiveSwitch({
   instruction,
@@ -13,6 +18,8 @@ export function InstructionActiveSwitch({
   instruction: Instruction
   onAnnounce: (message: string) => void
 }) {
+  const { canSetActive } = useInstructionPermissions()
+  const switchId = useId()
   const [feedback, setFeedback] = useState<{
     text: string
     neutral: boolean
@@ -47,40 +54,58 @@ export function InstructionActiveSwitch({
     mutation.mutate({ id: instruction.id, active: next })
   }
 
+  if (!canSetActive)
+    return (
+      <Badge
+        variant={instruction.active ? 'secondary' : 'outline'}
+        aria-label={`Estado da instrução ${instruction.code}: ${instruction.active ? 'Ativo' : 'Inativo'}`}
+      >
+        {instruction.active ? 'Ativo' : 'Inativo'}
+      </Badge>
+    )
+
   return (
     <div>
-      <div className="inline-flex items-center gap-2">
+      <Field
+        orientation="horizontal"
+        data-disabled={mutation.isPending}
+        className="inline-flex w-auto gap-2"
+      >
         <Switch
+          id={switchId}
           checked={instruction.active}
           disabled={mutation.isPending}
           onCheckedChange={change}
           aria-label={`${instruction.active ? 'Desativar' : 'Ativar'} instrução ${instruction.code}`}
         />
-        <span className="text-sm">
+        <FieldLabel htmlFor={switchId}>
           {mutation.isPending
             ? 'Salvando…'
             : instruction.active
               ? 'Ativo'
               : 'Inativo'}
-        </span>
-      </div>
+        </FieldLabel>
+      </Field>
       {feedback && (
-        <div className="mt-1">
-          <p
-            className="text-destructive text-sm"
-            role={feedback.neutral ? 'status' : 'alert'}
-          >
-            {feedback.text}
-          </p>
-          {mutation.error?.status === 404 && (
-            <button
-              className="text-primary text-sm underline"
-              onClick={() => void refreshList()}
-            >
-              Atualizar lista
-            </button>
-          )}
-        </div>
+        <Alert
+          className="mt-2"
+          variant={feedback.neutral ? 'default' : 'destructive'}
+          role={feedback.neutral ? 'status' : 'alert'}
+        >
+          <AlertDescription>
+            <p>{feedback.text}</p>
+            {mutation.error?.status === 404 && (
+              <Button
+                className="mt-2"
+                variant="link"
+                size="sm"
+                onClick={() => void refreshList()}
+              >
+                Atualizar lista
+              </Button>
+            )}
+          </AlertDescription>
+        </Alert>
       )}
     </div>
   )

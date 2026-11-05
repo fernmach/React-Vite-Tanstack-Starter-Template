@@ -1,5 +1,13 @@
 import { Pencil } from 'lucide-react'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from '@/components/ui/empty'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
   TableBody,
@@ -13,6 +21,7 @@ import type { InstructionPage } from '../model/instruction'
 import { instructionQueryErrorCopy } from '../model/instruction-error-copy'
 import { DeleteInstructionDialog } from './delete-instruction-dialog'
 import { InstructionActiveSwitch } from './instruction-active-switch'
+import { useInstructionPermissions } from './use-instruction-permissions'
 
 export function InstructionsResults({
   loading,
@@ -27,35 +36,43 @@ export function InstructionsResults({
   onRetry: () => void
   onAnnounce?: (message: string) => void
 }) {
+  const { canUpdate, canArchive } = useInstructionPermissions()
+
   if (loading)
     return (
-      <div
-        className="border-border bg-card rounded-sm border p-6"
-        role="status"
-      >
-        Carregando instruções…
+      <div className="border-border bg-card flex flex-col gap-4 rounded-sm border p-6">
+        <p className="sr-only" role="status">
+          Carregando instruções…
+        </p>
+        <Skeleton className="h-5 w-48" aria-hidden="true" />
+        <Skeleton className="h-4 w-full" aria-hidden="true" />
+        <Skeleton className="h-4 w-4/5" aria-hidden="true" />
       </div>
     )
   if (error)
     return (
-      <div
-        className="border-destructive bg-card rounded-sm border p-6"
+      <Alert
+        variant={error.status === 401 ? 'default' : 'destructive'}
         role={error.status === 401 ? 'status' : 'alert'}
       >
-        <p className="font-medium">{instructionQueryErrorCopy(error)}</p>
-        <Button className="mt-4" size="sm" onClick={onRetry}>
-          Tentar novamente
-        </Button>
-      </div>
+        <AlertTitle>{instructionQueryErrorCopy(error)}</AlertTitle>
+        <AlertDescription>
+          <Button className="mt-4" size="sm" onClick={onRetry}>
+            Tentar novamente
+          </Button>
+        </AlertDescription>
+      </Alert>
     )
   if (!result || result.total === 0)
     return (
-      <div className="border-border bg-card rounded-sm border p-6">
-        <p className="font-medium">Nenhuma instrução encontrada.</p>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Revise o termo pesquisado ou limpe o filtro.
-        </p>
-      </div>
+      <Empty className="border-border bg-card border">
+        <EmptyHeader>
+          <EmptyTitle>Nenhuma instrução encontrada.</EmptyTitle>
+          <EmptyDescription>
+            Revise o termo pesquisado ou limpe o filtro.
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     )
   return (
     <div className="border-border bg-card hidden rounded-sm border md:block">
@@ -66,8 +83,10 @@ export function InstructionsResults({
             <TableHead>Descrição de MPV</TableHead>
             <TableHead>URL</TableHead>
             <TableHead className="text-center">Ativo</TableHead>
-            <TableHead className="text-center">Editar</TableHead>
-            <TableHead className="text-center">Excluir</TableHead>
+            {canUpdate && <TableHead className="text-center">Editar</TableHead>}
+            {canArchive && (
+              <TableHead className="text-center">Excluir</TableHead>
+            )}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -89,22 +108,26 @@ export function InstructionsResults({
                   onAnnounce={onAnnounce}
                 />
               </TableCell>
-              <TableCell className="text-center">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  render={<a href={`/instrucoes/${item.id}/editar`} />}
-                  aria-label={`Editar instrução ${item.code}`}
-                >
-                  <Pencil aria-hidden="true" />
-                </Button>
-              </TableCell>
-              <TableCell className="text-center">
-                <DeleteInstructionDialog
-                  instruction={item}
-                  onAnnounce={onAnnounce}
-                />
-              </TableCell>
+              {canUpdate && (
+                <TableCell className="text-center">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    render={<a href={`/instrucoes/${item.id}/editar`} />}
+                    aria-label={`Editar instrução ${item.code}`}
+                  >
+                    <Pencil data-icon="inline-start" aria-hidden="true" />
+                  </Button>
+                </TableCell>
+              )}
+              {canArchive && (
+                <TableCell className="text-center">
+                  <DeleteInstructionDialog
+                    instruction={item}
+                    onAnnounce={onAnnounce}
+                  />
+                </TableCell>
+              )}
             </TableRow>
           ))}
         </TableBody>

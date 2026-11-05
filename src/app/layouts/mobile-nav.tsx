@@ -31,12 +31,6 @@ export function AppMobileNav() {
           >
             Instruções
           </Link>
-          <button
-            type="button"
-            className="focus-visible:ring-ring w-full rounded-sm px-3 py-2 text-left text-sm focus-visible:ring-2 focus-visible:outline-none"
-          >
-            Fernando Machado
-          </button>
         </div>
       )}
     </div>

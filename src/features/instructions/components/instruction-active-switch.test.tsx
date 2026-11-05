@@ -5,9 +5,23 @@ import { describe, expect, it, vi } from 'vitest'
 import { instructionsUrl } from '@/mocks/instructions-handlers'
 import { updateInstruction } from '@/mocks/instructions-store'
 import { server } from '@/mocks/server'
+import {
+  resetAuthenticationRequiredEpisode,
+  subscribeAuthenticationRequired,
+} from '@/lib/api-events'
 import { render, screen, waitFor } from '@/test/render'
 import { useInstructions } from '../api/get-instructions'
+import type { Instruction } from '../model/instruction'
 import { InstructionActiveSwitch } from './instruction-active-switch'
+
+const activeInstruction: Instruction = {
+  id: 'instruction-active',
+  code: 'ACTIVE-001',
+  description: 'Active instruction',
+  url: 'https://example.test/active',
+  active: true,
+  archived: false,
+}
 
 function Harness({ onAnnounce }: { onAnnounce: (message: string) => void }) {
   const query = useInstructions({ input: { term: '186681' } })
@@ -23,9 +37,58 @@ function Harness({ onAnnounce }: { onAnnounce: (message: string) => void }) {
 }
 
 describe('InstructionActiveSwitch', () => {
+  it('uses unique switch IDs and associates each visible label', () => {
+    render(
+      <>
+        <InstructionActiveSwitch
+          instruction={activeInstruction}
+          onAnnounce={vi.fn()}
+        />
+        <InstructionActiveSwitch
+          instruction={activeInstruction}
+          onAnnounce={vi.fn()}
+        />
+      </>,
+      { auth: 'editor' },
+    )
+
+    const controls = screen.getAllByRole('switch')
+    const labels = screen.getAllByText('Ativo')
+    expect(controls[0].id).not.toBe(controls[1].id)
+    expect(labels[0]).toHaveAttribute('for', controls[0].id)
+    expect(labels[1]).toHaveAttribute('for', controls[1].id)
+  })
+
+  it('renders read-only states as non-destructive badges', () => {
+    render(
+      <>
+        <InstructionActiveSwitch
+          instruction={activeInstruction}
+          onAnnounce={vi.fn()}
+        />
+        <InstructionActiveSwitch
+          instruction={{ ...activeInstruction, id: 'inactive', active: false }}
+          onAnnounce={vi.fn()}
+        />
+      </>,
+      { auth: 'anonymous' },
+    )
+
+    const active = screen.getByLabelText(
+      'Estado da instrução ACTIVE-001: Ativo',
+    )
+    const inactive = screen.getByLabelText(
+      'Estado da instrução ACTIVE-001: Inativo',
+    )
+    expect(active).toHaveTextContent('Ativo')
+    expect(active).not.toHaveClass('bg-destructive')
+    expect(inactive).toHaveTextContent('Inativo')
+    expect(inactive).not.toHaveClass('bg-destructive')
+  })
+
   it('describes a failed refresh after a confirmed active write without rolling back', async () => {
     const user = userEvent.setup()
-    render(<Harness onAnnounce={vi.fn()} />)
+    render(<Harness onAnnounce={vi.fn()} />, { auth: 'editor' })
     const control = await screen.findByRole('switch', {
       name: 'Desativar instrução 186681',
     })
@@ -52,7 +115,10 @@ describe('InstructionActiveSwitch', () => {
         ),
       ),
     )
-    render(<Harness onAnnounce={vi.fn()} />)
+    const { queryClient } = render(<Harness onAnnounce={vi.fn()} />, {
+      auth: 'editor',
+    })
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     await user.click(
       await screen.findByRole('switch', { name: 'Desativar instrução 186681' }),
     )
@@ -62,6 +128,10 @@ describe('InstructionActiveSwitch', () => {
     expect(
       screen.getByRole('button', { name: 'Atualizar lista' }),
     ).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Atualizar lista' }))
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['instructions', 'list'],
+    })
     expect(screen.queryByText('PRIVATE')).not.toBeInTheDocument()
   })
 
@@ -83,7 +153,7 @@ describe('InstructionActiveSwitch', () => {
       }),
     )
 
-    render(<Harness onAnnounce={announce} />)
+    render(<Harness onAnnounce={announce} />, { auth: 'editor' })
     const control = await screen.findByRole('switch', {
       name: 'Desativar instrução 186681',
     })
@@ -91,6 +161,10 @@ describe('InstructionActiveSwitch', () => {
 
     await waitFor(() => expect(control).not.toBeChecked())
     expect(control).toBeDisabled()
+    expect(control.closest('[data-slot="field"]')).toHaveAttribute(
+      'data-disabled',
+      'true',
+    )
     expect(screen.getByText('Salvando…')).toBeVisible()
     await user.click(control)
     expect(patchCount).toBe(1)
@@ -118,7 +192,7 @@ describe('InstructionActiveSwitch', () => {
       }),
     )
 
-    render(<Harness onAnnounce={announce} />)
+    render(<Harness onAnnounce={announce} />, { auth: 'editor' })
     const control = await screen.findByRole('switch', {
       name: 'Desativar instrução 186681',
     })
@@ -129,8 +203,61 @@ describe('InstructionActiveSwitch', () => {
     await waitFor(() => expect(control).toBeChecked())
     expect(screen.getByText('Ativo')).toBeVisible()
     expect(announce).not.toHaveBeenCalled()
-    expect(screen.getByRole('alert')).toHaveTextContent(
+    const alert = screen.getByRole('alert')
+    expect(alert).toHaveTextContent('Não foi possível alterar a instrução')
+    expect(alert).toHaveClass('text-destructive')
+    expect(alert.querySelector('p')).toHaveTextContent(
       'Não foi possível alterar a instrução',
     )
+  })
+
+  it('keeps authentication feedback neutral while other mutation failures are destructive', async () => {
+    const user = userEvent.setup()
+    server.use(
+      http.patch(`${instructionsUrl}/*`, () =>
+        HttpResponse.json({ message: 'PRIVATE AUTH' }, { status: 401 }),
+      ),
+    )
+
+    render(<Harness onAnnounce={vi.fn()} />, { auth: 'editor' })
+    await user.click(
+      await screen.findByRole('switch', { name: 'Desativar instrução 186681' }),
+    )
+
+    const status = await screen.findByRole('status')
+    expect(status).toHaveTextContent('A operação está indisponível.')
+    expect(status).not.toHaveClass('text-destructive')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.queryByText('PRIVATE AUTH')).not.toBeInTheDocument()
+    resetAuthenticationRequiredEpisode()
+  })
+
+  it('shows distinct forbidden feedback without publishing authentication recovery', async () => {
+    const user = userEvent.setup()
+    const authenticationRequired = vi.fn()
+    const unsubscribe = subscribeAuthenticationRequired(authenticationRequired)
+    server.use(
+      http.patch(`${instructionsUrl}/*`, () =>
+        HttpResponse.json(
+          { message: 'PRIVATE PERMISSION DETAIL', code: 'FORBIDDEN' },
+          { status: 403 },
+        ),
+      ),
+    )
+
+    render(<Harness onAnnounce={vi.fn()} />, { auth: 'editor' })
+    await user.click(
+      await screen.findByRole('switch', { name: 'Desativar instrução 186681' }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Você não tem permissão para realizar esta operação.',
+    )
+    expect(
+      screen.queryByText('PRIVATE PERMISSION DETAIL'),
+    ).not.toBeInTheDocument()
+    expect(authenticationRequired).not.toHaveBeenCalled()
+    unsubscribe()
+    resetAuthenticationRequiredEpisode()
   })
 })

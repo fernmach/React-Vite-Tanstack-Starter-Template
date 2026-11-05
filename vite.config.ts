@@ -6,10 +6,10 @@ import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 
-function excludeProductionMocks(): Plugin {
+function excludeProductionOnlyModules(): Plugin {
   let config: ResolvedConfig
   return {
-    name: 'exclude-production-mocks',
+    name: 'exclude-production-only-modules',
     apply: 'build',
     configResolved(resolved) {
       config = resolved
@@ -17,10 +17,13 @@ function excludeProductionMocks(): Plugin {
     generateBundle(_options, bundle) {
       for (const output of Object.values(bundle)) {
         if (output.type !== 'chunk') continue
-        const mockModule = Object.keys(output.modules).find((id) =>
-          /[/\\](?:src[/\\]mocks|node_modules[/\\]msw)[/\\]/.test(id),
+        const developmentModule = Object.keys(output.modules).find((id) =>
+          /[/\\](?:src[/\\]mocks|node_modules[/\\](?:msw|@tanstack[/\\](?:router|react-query)-devtools))[/\\]/.test(
+            id,
+          ),
         )
-        if (mockModule) this.error(`Production chunk contains ${mockModule}`)
+        if (developmentModule)
+          this.error(`Production chunk contains ${developmentModule}`)
       }
     },
     async closeBundle() {
@@ -38,9 +41,11 @@ function excludeProductionMocks(): Plugin {
 export default defineConfig(({ mode }) => ({
   define: {
     __APP_DEVELOPMENT__: JSON.stringify(mode !== 'production'),
+    __APP_QUERY_DEVTOOLS__: JSON.stringify(mode === 'development'),
+    __APP_ROUTER_DEVTOOLS__: JSON.stringify(mode === 'development'),
   },
   plugins: [
-    excludeProductionMocks(),
+    excludeProductionOnlyModules(),
     tailwindcss(),
     tanstackRouter({
       target: 'react',

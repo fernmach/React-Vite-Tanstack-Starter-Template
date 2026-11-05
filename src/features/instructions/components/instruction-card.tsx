@@ -2,6 +2,7 @@ import { Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DeleteInstructionDialog } from './delete-instruction-dialog'
 import { InstructionActiveSwitch } from './instruction-active-switch'
+import { useInstructionPermissions } from './use-instruction-permissions'
 import type { Instruction } from '../model/instruction'
 export function InstructionCard({
   instruction,
@@ -10,6 +11,8 @@ export function InstructionCard({
   instruction: Instruction
   onAnnounce?: (message: string) => void
 }) {
+  const { canUpdate, canArchive } = useInstructionPermissions()
+
   return (
     <article className="border-border bg-card mb-3 rounded-sm border p-4">
       <div className="flex items-start justify-between gap-3">
@@ -33,21 +36,28 @@ export function InstructionCard({
           {instruction.url}
         </a>
       </details>
-      <div className="mt-4 flex gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          render={<a href={`/instrucoes/${instruction.id}/editar`} />}
-        >
-          <Pencil data-icon="inline-start" aria-hidden="true" />
-          Editar <span className="sr-only">instrução {instruction.code}</span>
-        </Button>
-        <DeleteInstructionDialog
-          instruction={instruction}
-          onAnnounce={onAnnounce}
-          compact
-        />
-      </div>
+      {(canUpdate || canArchive) && (
+        <div className="mt-4 flex gap-2">
+          {canUpdate && (
+            <Button
+              variant="outline"
+              size="sm"
+              render={<a href={`/instrucoes/${instruction.id}/editar`} />}
+            >
+              <Pencil data-icon="inline-start" aria-hidden="true" />
+              Editar{' '}
+              <span className="sr-only">instrução {instruction.code}</span>
+            </Button>
+          )}
+          {canArchive && (
+            <DeleteInstructionDialog
+              instruction={instruction}
+              onAnnounce={onAnnounce}
+              compact
+            />
+          )}
+        </div>
+      )}
     </article>
   )
 }
